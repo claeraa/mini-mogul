@@ -5,9 +5,13 @@ type HomeSceneProps = {
   /** True only for the first visit, which gets the full staged entrance. */
   intro: boolean
   launching: boolean
-  canContinue: boolean
+  /** The name of the world Continue will open, if there is one. */
+  continueName: string | null
+  /** How many worlds are saved on this device. */
+  worldCount: number
   onStart: () => void
   onContinue: () => void
+  onWorlds: () => void
 }
 
 function IdeaStar() {
@@ -40,9 +44,11 @@ function IdeaStar() {
 export function HomeScene({
   intro,
   launching,
-  canContinue,
+  continueName,
+  worldCount,
   onStart,
   onContinue,
+  onWorlds,
 }: HomeSceneProps) {
   return (
     <div className="home" data-intro={intro ? 'first' : 'return'}>
@@ -68,15 +74,30 @@ export function HomeScene({
 
       <div className="home-actions enter enter--cta">
         <StartButton onClick={onStart} disabled={launching} />
-        {canContinue && (
-          <button
-            type="button"
-            className="ghost-button"
-            onClick={onContinue}
-            disabled={launching}
-          >
-            Continue
-          </button>
+        {(continueName !== null || worldCount > 0) && (
+          <div className="home-actions__row">
+            {continueName !== null && (
+              <button
+                type="button"
+                className="ghost-button"
+                aria-label={`Continue ${continueName}`}
+                onClick={onContinue}
+                disabled={launching}
+              >
+                Continue
+              </button>
+            )}
+            {worldCount > 0 && (
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={onWorlds}
+                disabled={launching}
+              >
+                My Worlds
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

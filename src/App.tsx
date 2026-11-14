@@ -1,6 +1,5 @@
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { WorldDirection } from './ai/schema.ts'
 import { ideaKey } from './ai/world.ts'
 import { AmbientLayers } from './components/AmbientLayers.tsx'
 import { AudioSettings } from './components/AudioSettings.tsx'
@@ -8,19 +7,30 @@ import { CreateScreen } from './components/CreateScreen.tsx'
 import { HomeScene } from './components/HomeScene.tsx'
 import { ImagineScreen } from './components/ImagineScreen.tsx'
 import { PlayScreen } from './components/PlayScreen.tsx'
-import { aiAvailable, requestWorldDirection, savedDirection } from './lib/ai.ts'
+import { WorldsScreen } from './components/WorldsScreen.tsx'
+import { aiAvailable, requestWorldDirection } from './lib/ai.ts'
 import { initAudio, playSfx, setAudioPrefs } from './lib/audio.ts'
 import { useMediaQuery, usePointerParallax } from './lib/hooks.ts'
 import {
-  clearGame,
-  loadProgress,
   loadSettings,
-  saveProgress,
+  loadWorlds,
+  makeWorldId,
   saveSettings,
+  saveWorlds,
 } from './lib/storage.ts'
-import type { Progress, Settings, ThemeId } from './lib/storage.ts'
+import type { Settings, ThemeId } from './lib/storage.ts'
+import {
+  findWorld,
+  newWorld,
+  openWorld,
+  putWorld,
+  recentFirst,
+  removeWorld,
+  updateWorld,
+} from './worlds/store.ts'
+import type { SavedWorld, WorldStore } from './worlds/store.ts'
 
-type Screen = 'home' | 'imagine' | 'create' | 'play'
+type Screen = 'home' | 'worlds' | 'imagine' | 'create' | 'play'
 
 /** How long the idea-star takes to reach the island before we move on. */
 const LAUNCH_MS = 900
@@ -32,35 +42,43 @@ const formMotion = {
   transition: { duration: 0.35, ease: 'easeOut' },
 } as const
 
-/** A world imagined this session, or one saved on this device earlier. */
-function findDirection(
-  directions: Record<string, WorldDirection>,
-  idea: string | undefined,
-): WorldDirection | null {
-  return idea ? (directions[ideaKey(idea)] ?? savedDirection(idea)) : null
-}
-
 function App() {
   const [screen, setScreen] = useState<Screen>('home')
   const [settings, setSettings] = useState<Settings>(loadSettings)
-  const [progress, setProgress] = useState<Progress | null>(loadProgress)
-  // A new idea being shaped while a saved shop already exists. It lives only
-  // in memory, so the saved shop is untouched until it is saved.
-  const [draft, setDraft] = useState<Progress | null>(null)
+
+  // Every saved world. Each keeps its own shop, AI world and game days.
+  const [store, setStore] = useState<WorldStore>(loadWorlds)
+  /** The saved world currently open, if any. */
+  const [activeId, setActiveId] = useState<string | null>(null)
+  // A brand-new world still being shaped. It lives only in memory until it is
+  // saved, so abandoning it never touches the worlds already saved.
+  const [draft, setDraft] = useState<SavedWorld | null>(null)
   const [resuming, setResuming] = useState(false)
+  /** Opens the shop form straight away (Edit in My Worlds). */
+  const [startEditing, setStartEditing] = useState(false)
+  /** Where closing a form leads back to. */
+  const [returnTo, setReturnTo] = useState<'home' | 'worlds'>('home')
   const [dirty, setDirty] = useState(false)
   const [launching, setLaunching] = useState(false)
   const [introDone, setIntroDone] = useState(false)
 
   // The AI Imagination Director. Everything works without it.
   const [aiOn, setAiOn] = useState(false)
-  const [directions, setDirections] = useState<Record<string, WorldDirection>>({})
+  /** Which world is waiting on the Director, keyed by world id. */
   const [aiBusy, setAiBusy] = useState<{ key: string; state: 'thinking' | 'failed' } | null>(null)
 
   const rootRef = useRef<HTMLDivElement>(null)
   const timers = useRef<number[]>([])
 
-  const working = draft ?? progress
+  const active = useMemo(() => findWorld(store, activeId), [store, activeId])
+  const working = draft ?? active
+  const worlds = useMemo(() => recentFirst(store), [store])
+  const lastWorld = useMemo(() => findWorld(store, store.lastWorldId), [store])
+
+  // Every change is written to this device straight away.
+  useEffect(() => {
+    saveWorlds(store)
+  }, [store])
 
   useEffect(() => {
     let live = true
@@ -72,32 +90,27 @@ function App() {
     }
   }, [])
 
-  const workingDirection = useMemo(
-    () => findDirection(directions, working?.idea),
-    [directions, working?.idea],
-  )
-  const savedShopDirection = useMemo(
-    () => findDirection(directions, progress?.idea),
-    [directions, progress?.idea],
-  )
-
-  /** Asks the Director to imagine a world. A failure just leaves the rules-built one. */
-  const imagine = useCallback((idea: string, offering: string) => {
-    const key = ideaKey(idea)
-    setAiBusy({ key, state: 'thinking' })
-    requestWorldDirection(idea, offering).then((direction) => {
-      if (direction) setDirections((known) => ({ ...known, [key]: direction }))
+  /**
+   * Asks the Director to imagine a world. The answer is stored in the world
+   * that asked and nowhere else; a failure just leaves the rules-built world.
+   */
+  const imagine = useCallback((worldId: string, idea: string, offering: string) => {
+    setAiBusy({ key: worldId, state: 'thinking' })
+    requestWorldDirection(worldId, idea, offering).then((direction) => {
+      if (direction) {
+        // Only if the world still has the idea that was asked about.
+        const apply = (world: SavedWorld): SavedWorld =>
+          ideaKey(world.shop.idea) === ideaKey(idea) ? { ...world, direction } : world
+        setDraft((current) => (current?.id === worldId ? apply(current) : current))
+        setStore((current) => updateWorld(current, worldId, apply, Date.now()))
+      }
       setAiBusy((current) =>
-        current?.key !== key ? current : direction ? null : { key, state: 'failed' },
+        current?.key !== worldId ? current : direction ? null : { key: worldId, state: 'failed' },
       )
     })
   }, [])
 
-  const aiState = !aiOn
-    ? 'off'
-    : working && aiBusy?.key === ideaKey(working.idea)
-      ? aiBusy.state
-      : 'idle'
+  const aiState = !aiOn ? 'off' : working && aiBusy?.key === working.id ? aiBusy.state : 'idle'
 
   const systemReduced = useMediaQuery('(prefers-reduced-motion: reduce)')
   const reducedMotion = settings.reduceMotion ?? systemReduced
@@ -136,15 +149,22 @@ function App() {
 
   const go = (next: Screen) => {
     setIntroDone(true)
-    if (next === 'home') setDraft(null)
+    if (next === 'home' || next === 'worlds') setDraft(null)
     setScreen(next)
     window.scrollTo(0, 0)
   }
 
+  const beginNewWorld = () => {
+    setResuming(false)
+    setActiveId(null)
+    setDraft(null)
+    setStartEditing(false)
+  }
+
   const handleStart = () => {
     if (launching) return
-    setResuming(false)
-    setDraft(null)
+    beginNewWorld()
+    setReturnTo('home')
     playSfx('whoosh')
     if (reducedMotion) {
       go('imagine')
@@ -160,46 +180,76 @@ function App() {
     )
   }
 
-  const handleContinue = () => {
+  /** Opens a saved world: on its shop page, in its form, or straight into play. */
+  const openSaved = (id: string, target: 'shop' | 'edit' | 'play') => {
+    const world = findWorld(store, id)
+    if (!world) return
     playSfx('plop')
+    setActiveId(id)
+    setDraft(null)
     setResuming(true)
-    go('create')
+    setReturnTo('worlds')
+    setStartEditing(target === 'edit')
+    setStore((current) => openWorld(current, id))
+    go(target === 'play' && world.shop.step === 'ready' ? 'play' : 'create')
   }
 
-  // Reworking the saved shop's idea, rather than starting a new business.
-  const editingSaved = resuming && draft === null && progress?.step === 'ready'
+  const deleteWorld = (id: string) => {
+    setStore((current) => removeWorld(current, id))
+    if (activeId === id) setActiveId(null)
+    playSfx('plop')
+  }
+
+  // Reworking a world that is already saved, rather than starting a new one.
+  const editingExisting = resuming && draft === null && active !== null
+  const editingSaved = editingExisting && active.shop.step === 'ready'
 
   const handleIdea = (values: { playerName: string; idea: string }) => {
-    // One call per new idea; a world already imagined for it is reused.
-    if (aiOn && !findDirection(directions, values.idea)) imagine(values.idea, '')
-    if (editingSaved && progress) {
-      // "Save changes": the same shop keeps its name, style and game days;
-      // only its idea (and so its world) changes.
-      const next: Progress = { ...progress, ...values }
-      setProgress(next)
-      saveProgress(next)
-      playSfx('chime')
+    const now = Date.now()
+    if (editingExisting) {
+      // The same world keeps its id, name, style and game days. If the idea
+      // itself changed, the old AI reading no longer fits and is dropped.
+      const changed = ideaKey(active.shop.idea) !== ideaKey(values.idea)
+      setStore((current) =>
+        updateWorld(
+          current,
+          active.id,
+          (world) => ({
+            ...world,
+            shop: { ...world.shop, ...values },
+            direction: changed ? null : world.direction,
+          }),
+          now,
+        ),
+      )
+      if (aiOn && (changed || !active.direction)) {
+        imagine(active.id, values.idea, active.shop.offering)
+      }
+      playSfx(editingSaved ? 'chime' : 'plop')
       go('create')
       return
     }
-    const base = resuming ? working : null
-    const sameIdea = base?.idea === values.idea
-    const next: Progress = {
-      step: 'create',
-      playerName: values.playerName,
-      idea: values.idea,
-      shopName: sameIdea ? base.shopName : '',
-      theme: sameIdea ? base.theme : 'cottage',
-      offering: sameIdea ? base.offering : '',
-    }
-    if (progress?.step === 'ready') {
-      // Never overwrite a saved shop with a half-made one.
-      setDraft(next)
-    } else {
-      setProgress(next)
-      saveProgress(next)
-    }
+
+    // A new world. Going back and keeping the same idea keeps the same draft.
+    const sameDraft = resuming && draft && draft.shop.idea === values.idea ? draft : null
+    const next: SavedWorld = sameDraft
+      ? { ...sameDraft, shop: { ...sameDraft.shop, playerName: values.playerName } }
+      : newWorld(
+          makeWorldId(),
+          {
+            step: 'create',
+            playerName: values.playerName,
+            idea: values.idea,
+            shopName: '',
+            theme: 'cottage',
+            offering: '',
+          },
+          now,
+        )
+    setDraft(next)
     setResuming(true)
+    // One call per new world; a draft that already has its answer keeps it.
+    if (aiOn && !next.direction) imagine(next.id, values.idea, '')
     playSfx('plop')
     go('create')
   }
@@ -210,19 +260,31 @@ function App() {
     offering: string
   }) => {
     if (!working) return
-    // A different business starts its opening days afresh.
-    if (progress?.step !== 'ready' || progress.idea !== working.idea) clearGame()
-    const next: Progress = { ...working, ...values, step: 'ready' }
-    setProgress(next)
-    saveProgress(next)
-    setDraft(null)
+    const now = Date.now()
+    if (draft) {
+      // First save: the new world joins My Worlds. Nothing else is touched.
+      setStore((current) =>
+        putWorld(current, {
+          ...draft,
+          shop: { ...draft.shop, ...values, step: 'ready' },
+          updatedAt: now,
+        }),
+      )
+      setActiveId(draft.id)
+      setDraft(null)
+    } else {
+      setStore((current) =>
+        updateWorld(
+          current,
+          working.id,
+          (world) => ({ ...world, shop: { ...world.shop, ...values, step: 'ready' } }),
+          now,
+        ),
+      )
+    }
+    setStartEditing(false)
     playSfx('chime')
   }
-
-  const replacesShop =
-    draft && progress?.step === 'ready' && draft.idea !== progress.idea
-      ? progress.shopName
-      : undefined
 
   return (
     <MotionConfig reducedMotion={reducedMotion ? 'always' : 'never'}>
@@ -248,9 +310,34 @@ function App() {
               <HomeScene
                 intro={!introDone}
                 launching={launching}
-                canContinue={progress !== null}
+                continueName={
+                  lastWorld ? lastWorld.shop.shopName || lastWorld.shop.idea : null
+                }
+                worldCount={worlds.length}
                 onStart={handleStart}
-                onContinue={handleContinue}
+                onContinue={() => lastWorld && openSaved(lastWorld.id, 'shop')}
+                onWorlds={() => {
+                  playSfx('plop')
+                  go('worlds')
+                }}
+              />
+            </motion.main>
+          )}
+
+          {screen === 'worlds' && (
+            <motion.main key="worlds" className="screen screen--form" {...formMotion}>
+              <WorldsScreen
+                worlds={worlds}
+                onOpen={(id) => openSaved(id, 'play')}
+                onEdit={(id) => openSaved(id, 'edit')}
+                onDelete={deleteWorld}
+                onNew={() => {
+                  beginNewWorld()
+                  setReturnTo('worlds')
+                  playSfx('whoosh')
+                  go('imagine')
+                }}
+                onExit={() => go('home')}
               />
             </motion.main>
           )}
@@ -258,11 +345,11 @@ function App() {
           {screen === 'imagine' && (
             <motion.main key="imagine" className="screen screen--form" {...formMotion}>
               <ImagineScreen
-                initialName={resuming ? (working?.playerName ?? '') : ''}
-                initialIdea={resuming ? (working?.idea ?? '') : ''}
+                initialName={resuming ? (working?.shop.playerName ?? '') : ''}
+                initialIdea={resuming ? (working?.shop.idea ?? '') : ''}
                 unsavedDraft={draft !== null}
                 editingSaved={editingSaved}
-                onExit={() => go('home')}
+                onExit={() => go(returnTo)}
                 onDirtyChange={setDirty}
                 onSubmit={handleIdea}
               />
@@ -272,14 +359,16 @@ function App() {
           {screen === 'create' && working && (
             <motion.main key="create" className="screen screen--form" {...formMotion}>
               <CreateScreen
-                progress={working}
-                direction={workingDirection}
+                key={working.id}
+                progress={working.shop}
+                direction={working.direction}
                 ai={aiState}
-                onAskAi={(offering) => imagine(working.idea, offering)}
+                onAskAi={(offering) => imagine(working.id, working.shop.idea, offering)}
                 unsavedDraft={draft !== null}
-                replacesShop={replacesShop}
+                startEditing={startEditing}
+                exitLabel={draft && returnTo === 'home' ? 'Back to the island' : 'My Worlds'}
                 onBack={() => go('imagine')}
-                onExit={() => go('home')}
+                onExit={() => go(draft && returnTo === 'home' ? 'home' : 'worlds')}
                 onPlay={() => {
                   playSfx('plop')
                   go('play')
@@ -290,14 +379,22 @@ function App() {
             </motion.main>
           )}
 
-          {screen === 'play' && progress?.step === 'ready' && (
+          {screen === 'play' && active?.shop.step === 'ready' && (
             <motion.main key="play" className="screen screen--form" {...formMotion}>
               <PlayScreen
-                shop={progress}
-                direction={savedShopDirection}
+                key={active.id}
+                worldId={active.id}
+                shop={active.shop}
+                direction={active.direction}
+                savedGame={active.game}
+                onGameChange={(game) =>
+                  setStore((current) =>
+                    updateWorld(current, active.id, (world) => ({ ...world, game }), Date.now()),
+                  )
+                }
                 aiOn={aiOn}
                 reducedMotion={reducedMotion}
-                onExit={() => go('home')}
+                onExit={() => go('worlds')}
               />
             </motion.main>
           )}

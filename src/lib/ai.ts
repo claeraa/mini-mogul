@@ -17,8 +17,6 @@ import type { BusinessModel, DayResult } from '../game/model.ts'
 /** Longer than the server's own limit, so the server's answer wins. */
 const CLIENT_TIMEOUT_MS = 45_000
 
-const WORLDS_KEY = 'mini-mogul:ai-worlds'
-const MAX_SAVED_WORLDS = 3
 
 async function call(path: string, body?: unknown): Promise<Record<string, unknown> | null> {
   const controller = new AbortController()
@@ -68,54 +66,19 @@ export function aiAvailable(): Promise<boolean> {
 
 // ---- Worlds -------------------------------------------------------------------
 
-type SavedWorld = { key: string; direction: WorldDirection }
-
-function readSavedWorlds(): SavedWorld[] {
-  try {
-    const raw: unknown = JSON.parse(localStorage.getItem(WORLDS_KEY) ?? '[]')
-    if (!Array.isArray(raw)) return []
-    const worlds: SavedWorld[] = []
-    for (const entry of raw) {
-      const key = (entry as SavedWorld | null)?.key
-      // Checked again on the way in: saved data is not trusted either.
-      const direction = parseWorldDirection((entry as SavedWorld | null)?.direction)
-      if (typeof key === 'string' && direction) worlds.push({ key, direction })
-    }
-    return worlds
-  } catch {
-    return []
-  }
-}
-
-/** The AI world saved on this device for an idea, if there is one. */
-export function savedDirection(idea: string): WorldDirection | null {
-  const key = ideaKey(idea)
-  return readSavedWorlds().find((world) => world.key === key)?.direction ?? null
-}
-
-function saveDirection(idea: string, direction: WorldDirection) {
-  const key = ideaKey(idea)
-  const worlds = [
-    { key, direction },
-    ...readSavedWorlds().filter((world) => world.key !== key),
-  ].slice(0, MAX_SAVED_WORLDS)
-  try {
-    localStorage.setItem(WORLDS_KEY, JSON.stringify(worlds))
-  } catch {
-    // Without storage the world simply is not remembered after a reload.
-  }
-}
-
-/** Asks the Director to imagine a world. Null means "use the built-in rules". */
+/**
+ * Asks the Director to imagine a world. Null means "use the built-in rules".
+ * The reply belongs to the world that asked: the caller stores it in that
+ * world's own save, and requests from different worlds are never shared.
+ */
 export function requestWorldDirection(
+  worldId: string,
   idea: string,
   offering: string,
 ): Promise<WorldDirection | null> {
-  return once(`world:${ideaKey(idea)}|${offering.trim().toLowerCase()}`, async () => {
+  return once(`world:${worldId}|${ideaKey(idea)}|${offering.trim().toLowerCase()}`, async () => {
     const data = await call('world', { idea, offering })
-    const direction = parseWorldDirection(data?.direction)
-    if (direction) saveDirection(idea, direction)
-    return direction
+    return parseWorldDirection(data?.direction)
   })
 }
 
@@ -125,10 +88,11 @@ export function requestWorldDirection(
 export function requestCoaching(
   model: BusinessModel,
   result: DayResult,
-  shop: { idea: string; offering: string },
+  shop: { worldId: string; idea: string; offering: string },
 ): Promise<Coaching | null> {
-  return once(`coach:${ideaKey(shop.idea)}|${JSON.stringify(result)}`, async () => {
-    const data = await call('coach', { ...shop, result })
+  const { worldId, ...about } = shop
+  return once(`coach:${worldId}|${ideaKey(shop.idea)}|${JSON.stringify(result)}`, async () => {
+    const data = await call('coach', { ...about, result })
     // The same number check the server ran, against this device's own figures.
     return parseCoaching(data?.coaching, coachFacts(model, result).allowed)
   })

@@ -13,7 +13,6 @@ import {
 import { applyResult, newGame } from '../game/state.ts'
 import type { GameState } from '../game/state.ts'
 import { playSfx } from '../lib/audio.ts'
-import { clearGame, loadGame, saveGame } from '../lib/storage.ts'
 import type { Progress } from '../lib/storage.ts'
 import type { WorldDirection } from '../ai/schema.ts'
 import { buildWorld } from '../ai/world.ts'
@@ -36,7 +35,13 @@ import { ProductIcon } from './WorldParts.tsx'
 import { WorldScene } from './WorldScene.tsx'
 
 type PlayScreenProps = {
+  /** This world's id: keeps its AI requests apart from other worlds'. */
+  worldId: string
   shop: Progress
+  /** This world's saved days, or null before its first one. */
+  savedGame: GameState | null
+  /** Called with the new state after every day, and with null on Start over. */
+  onGameChange: (game: GameState | null) => void
   /** The AI Director's checked reading of the idea, when there is one. */
   direction: WorldDirection | null
   aiOn: boolean
@@ -89,13 +94,16 @@ function ToolTile({
 
 /** The shop in its world: plan a day, watch it happen, read the report. */
 export function PlayScreen({
+  worldId,
   shop,
+  savedGame,
+  onGameChange,
   direction,
   aiOn,
   reducedMotion,
   onExit,
 }: PlayScreenProps) {
-  const [game, setGame] = useState<GameState>(() => loadGame() ?? freshGame())
+  const [game, setGame] = useState<GameState>(() => savedGame ?? freshGame())
   const [plan, setPlan] = useState<DayPlan>(() =>
     clampPlan(model, game, game.lastPlan),
   )
@@ -208,7 +216,7 @@ export function PlayScreen({
     const next = applyResult(game, today)
     // Saved straight away, so leaving mid-day never loses it.
     setGame(next)
-    saveGame(next)
+    onGameChange(next)
     setResult(today)
     setServed(0)
     if (reducedMotion) {
@@ -229,7 +237,7 @@ export function PlayScreen({
 
   const restart = () => {
     const next = freshGame()
-    clearGame()
+    onGameChange(null)
     setGame(next)
     setPlan(clampPlan(model, next, next.lastPlan))
     setResult(null)
@@ -244,7 +252,7 @@ export function PlayScreen({
         result={result}
         shopName={shop.shopName}
         icon={blueprint.productIcon}
-        shop={{ idea: shop.idea, offering: shop.offering }}
+        shop={{ worldId, idea: shop.idea, offering: shop.offering }}
         aiOn={aiOn}
         onNextDay={planNextDay}
         onExit={onExit}
@@ -273,7 +281,7 @@ export function PlayScreen({
         } as CSSProperties
       }
     >
-      <CloseButton label="Close and return home" onClick={onExit} />
+      <CloseButton label="Close and go to My Worlds" onClick={onExit} />
       <header className="game-head">
         <p className="card__step">
           <SparkIcon />

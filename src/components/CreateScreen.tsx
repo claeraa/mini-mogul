@@ -23,8 +23,10 @@ type CreateScreenProps = {
   onAskAi: (offering: string) => void
   /** True when the idea being shaped has not been saved yet. */
   unsavedDraft: boolean
-  /** Name of an already saved shop that saving this one would replace. */
-  replacesShop?: string
+  /** Opens straight on the edit form (used by Edit in My Worlds). */
+  startEditing?: boolean
+  /** Where leaving goes: "My Worlds" for a saved world, the island for a new one. */
+  exitLabel: string
   /** Back to the idea screen. */
   onBack: () => void
   /** Leave for home, dropping whatever is unsaved. */
@@ -141,7 +143,8 @@ export function CreateScreen({
   ai,
   onAskAi,
   unsavedDraft,
-  replacesShop,
+  startEditing = false,
+  exitLabel,
   onBack,
   onExit,
   onPlay,
@@ -159,7 +162,7 @@ export function CreateScreen({
   const [theme, setTheme] = useState<ThemeId>(baseline.theme)
   const [offering, setOffering] = useState(baseline.offering)
   const [error, setError] = useState('')
-  const [editing, setEditing] = useState(progress.step !== 'ready')
+  const [editing, setEditing] = useState(startEditing || progress.step !== 'ready')
   const [leaving, setLeaving] = useState<'home' | 'back' | null>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
@@ -271,7 +274,7 @@ export function CreateScreen({
               Edit shop
             </button>
             <button type="button" className="text-button" onClick={onExit}>
-              Back to the island
+              {exitLabel}
             </button>
           </div>
         </div>
@@ -374,13 +377,6 @@ export function CreateScreen({
           Your idea, this and your style shape the world above.
         </p>
       </div>
-
-      {replacesShop && (
-        <p className="card__note card__note--warn">
-          You already have a saved shop, {replacesShop}. It stays safe unless
-          you save this one, which will replace it and start again from day 1.
-        </p>
-      )}
 
       <div className="card__actions">
         <button

@@ -997,3 +997,144 @@
   outline: none;
   box-shadow: none;
 }
+
+/* ---------------------------------------------------------------------------
+   My Worlds
+   ------------------------------------------------------------------------ */
+
+.card--worlds {
+  width: min(100%, 1040px);
+}
+
+.world-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr));
+  gap: 16px;
+}
+
+.world-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow:
+    inset 0 0 0 2px var(--line),
+    0 6px 0 #c9dcec;
+  overflow: hidden;
+}
+
+/* Thumbnails are still pictures: they do not animate. */
+.world-card__picture .world__view {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.world-card__picture svg * {
+  animation: none !important;
+}
+
+.world-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px 14px;
+}
+
+.world-card__name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.250rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.world-card__kind,
+.world-card__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.400em 0.700em;
+  font-size: 0.920rem;
+  color: var(--ink-soft);
+}
+
+.world-card__status {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.world-card__cash {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.300em;
+  font-variant-numeric: tabular-nums;
+}
+
+.world-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.world-card__actions .tactile {
+  margin-right: auto;
+}
+
+.world-card__actions .text-button {
+  padding-inline: 0.700em;
+}
+
+.world-card--new {
+  min-height: 190px;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 0 0 3px var(--line);
+}
+
+.world-card__new {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 18px;
+  border: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.250rem;
+  color: var(--deep);
+  background: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.world-card__new:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.world-card__plus {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  font-size: 2.200rem;
+  line-height: 1;
+  color: var(--sun-ink);
+  background: linear-gradient(180deg, #ffe68a, #ffb22e);
+  box-shadow: 0 4px 0 var(--sun-deep);
+  transition: transform 0.2s ease;
+}
+
+.world-card__new:hover .world-card__plus {
+  transform: scale(1.08) rotate(90deg);
+}
+
+.world-card__hint {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.880rem;
+  color: var(--ink-soft);
+}

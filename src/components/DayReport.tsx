@@ -19,7 +19,7 @@ type DayReportProps = {
   shopName: string
   icon: ProductIconId
   /** Sent to the AI coach along with the day's numbers. Never the player's name. */
-  shop: { idea: string; offering: string }
+  shop: { worldId: string; idea: string; offering: string }
   aiOn: boolean
   onNextDay: () => void
   onExit: () => void
@@ -119,11 +119,11 @@ export function DayReport({
   // a checked reply arrives. Coaching is words only and never changes the game.
   const [aiCoaching, setAiCoaching] = useState<Coaching | null>(null)
   const [asking, setAsking] = useState(aiOn)
-  const { idea, offering } = shop
+  const { worldId, idea, offering } = shop
   useEffect(() => {
     if (!aiOn) return
     let live = true
-    requestCoaching(model, r, { idea, offering }).then((coaching) => {
+    requestCoaching(model, r, { worldId, idea, offering }).then((coaching) => {
       if (!live) return
       setAiCoaching(coaching)
       setAsking(false)
@@ -131,7 +131,7 @@ export function DayReport({
     return () => {
       live = false
     }
-  }, [aiOn, model, r, idea, offering])
+  }, [aiOn, model, r, worldId, idea, offering])
   const coaching = aiCoaching ?? fallbackCoaching(model, r)
 
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -416,7 +416,7 @@ export function DayReport({
 
       <div className="card__actions">
         <button type="button" className="text-button" onClick={onExit}>
-          Back to the island
+          My Worlds
         </button>
         <TactileButton onClick={onNextDay}>Plan day {r.day + 1}</TactileButton>
       </div>

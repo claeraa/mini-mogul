@@ -26,6 +26,12 @@ To switch it on, copy `.env.example` to `.env.local`, set `AI_DIRECTOR=on` and `
 - Only the idea, the first product and the day's numbers are sent. The player's name is not.
 - The endpoint runs inside the Vite dev and preview servers. Hosting it publicly needs a server and has not been set up.
 
+## My Worlds and saved progress
+
+Players can keep several worlds. Each has its own id, shop, style, AI-imagined world, game days, cash and history; nothing is shared between them. Worlds are stored in the browser's localStorage under `mini-mogul:worlds`, so they belong to one browser on one device and are not synced or backed up online.
+
+A save from before My Worlds existed (`mini-mogul:progress`, `mini-mogul:game`, `mini-mogul:ai-worlds`) is copied into the new store the first time the game loads. The old keys are left untouched and a copy is kept under `mini-mogul:legacy-backup`.
+
 ## What is here
 
 - `src/components/AmbientLayers.tsx` — sky, clouds, far isles, water and particles (shared by every screen)
@@ -40,6 +46,8 @@ To switch it on, copy `.env.example` to `.env.local`, set `AI_DIRECTOR=on` and `
 - `src/ai/` — what the AI may say (`schema.ts`) and how a checked reply becomes a world (`world.ts`)
 - `server/` — the `/api/ai` endpoint: prompts and checks (`director.ts`), the Anthropic provider (`provider.ts`), the Vite middleware (`vitePlugin.ts`)
 - `src/lib/ai.ts` — the browser's client for that endpoint, with caching and fallback
+- `src/worlds/store.ts` — My Worlds: the multi-world save, its checks and the migration from the old single save
+- `src/components/WorldsScreen.tsx` — the My Worlds screen
 - `src/game/coach.ts` — the day's facts for the coach, and the built-in coach
 - `src/game/report.ts` — splits a day into profit, cash change and inventory for the report
 - `tests/` — tests for demand, revenue, costs, profit, cash, inventory, the report and the blueprints
