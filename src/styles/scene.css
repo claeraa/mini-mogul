@@ -1,0 +1,751 @@
+/* ---------------------------------------------------------------------------
+   The world: sky, clouds, far isles, water, island, particles.
+   Horizon sits at 68% of the viewport. Every moving thing animates only
+   transform or opacity.
+   ------------------------------------------------------------------------ */
+
+.app {
+  --horizon: 68%;
+  position: relative;
+  min-height: 100dvh;
+  overflow-x: clip;
+  isolation: isolate;
+}
+
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  transform-origin: 50% 58%;
+  transition: transform 1.2s cubic-bezier(0.3, 0.1, 0.2, 1);
+  animation: fade-in 0.8s ease-out backwards;
+}
+
+/* The world leans in slightly once you step inside it. */
+.app[data-launching] .ambient,
+.app:not([data-screen='home']) .ambient {
+  transform: scale(1.05);
+}
+
+/* ---- Sky --------------------------------------------------------------- */
+
+.sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(46% 30% at 16% 18%, rgba(128, 140, 255, 0.35), transparent 70%),
+    radial-gradient(40% 30% at 86% 14%, rgba(92, 222, 232, 0.28), transparent 70%),
+    linear-gradient(
+      180deg,
+      #2a5fc7 0%,
+      #3d83df 20%,
+      #6db2ef 40%,
+      #a6daf6 55%,
+      #dcf3f4 68%
+    );
+}
+
+.sky-light {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(34% 26% at 50% 60%, rgba(255, 244, 214, 0.85), transparent 72%),
+    radial-gradient(70% 34% at 50% 66%, rgba(255, 226, 196, 0.5), transparent 75%);
+  animation: breathe 24s ease-in-out infinite;
+}
+
+/* ---- Parallax layers ---------------------------------------------------- */
+
+.layer {
+  position: absolute;
+  inset: 0;
+  transform: translate3d(
+    calc(var(--px, 0) * var(--depth) * -1px),
+    calc(var(--py, 0) * var(--depth) * -0.5px),
+    0
+  );
+}
+
+.layer--far {
+  --depth: 6;
+}
+
+.layer--isles {
+  --depth: 9;
+}
+
+.layer--mid {
+  --depth: 16;
+}
+
+/* ---- Clouds ------------------------------------------------------------- */
+
+.cloud {
+  position: absolute;
+  width: max(calc(var(--size) * 1vw), calc(var(--size) * 8px));
+  will-change: transform;
+}
+
+.cloud svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.cloud--drift-a {
+  animation: drift 38s ease-in-out infinite alternate;
+}
+
+.cloud--drift-b {
+  animation: drift 45s ease-in-out -12s infinite alternate-reverse;
+}
+
+.cloud--drift-c {
+  animation: drift 30s ease-in-out -6s infinite alternate;
+}
+
+/* ---- Far isles and hills ----------------------------------------------- */
+
+.far-isle {
+  position: absolute;
+  opacity: 0.85;
+}
+
+.far-isle--left {
+  left: 9%;
+  top: 44%;
+  width: max(9vw, 84px);
+  animation: bob 9s ease-in-out -3s infinite;
+}
+
+.far-isle--right {
+  right: 7%;
+  top: 36%;
+  width: max(6.500vw, 64px);
+  animation: bob 8s ease-in-out infinite;
+}
+
+.hills {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 5vh;
+  bottom: calc(100% - var(--horizon) - 1px);
+}
+
+/* ---- Water -------------------------------------------------------------- */
+
+.water {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--horizon);
+  bottom: 0;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    #c9f3ee 0%,
+    #7fdcd9 9%,
+    #36bccb 32%,
+    #1795b3 66%,
+    #0e6f9a 100%
+  );
+}
+
+.water::before {
+  /* luminous seam where sky meets sea */
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), transparent);
+}
+
+.water-glint {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: min(46vw, 620px);
+  height: 100%;
+  margin-left: calc(min(46vw, 620px) / -2);
+  background: radial-gradient(
+    50% 80% at 50% 0%,
+    rgba(255, 246, 220, 0.6),
+    transparent 75%
+  );
+  animation: breathe 9s ease-in-out infinite;
+}
+
+.water-isle {
+  /* soft reflection of the island */
+  position: absolute;
+  left: 50%;
+  top: 16%;
+  width: min(44vw, 520px);
+  height: 46%;
+  margin-left: calc(min(44vw, 520px) / -2);
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(28, 104, 118, 0.5),
+    rgba(40, 140, 120, 0.22) 55%,
+    transparent 72%
+  );
+  animation: reflect 7s ease-in-out infinite alternate;
+}
+
+.shimmer {
+  position: absolute;
+  left: 0;
+  width: calc(100% + var(--tile));
+  background-repeat: repeat;
+  background-size: var(--tile) auto;
+  will-change: transform;
+  animation: flow var(--speed) linear infinite;
+}
+
+.shimmer--far {
+  --tile: 240px;
+  --speed: 12s;
+  top: 1%;
+  height: 20%;
+  opacity: 0.7;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='36'%3E%3Cpath d='M8 7h34M96 18h22M150 9h42M40 28h30M188 30h26M120 30h18' stroke='white' stroke-opacity='.6' stroke-width='1.400' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
+  mask-image: linear-gradient(180deg, #000 40%, transparent);
+}
+
+.shimmer--mid {
+  --tile: 380px;
+  --speed: 10s;
+  top: 16%;
+  height: 40%;
+  opacity: 0.5;
+  animation-direction: reverse;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='380' height='70'%3E%3Cpath d='M14 12q26 -5 52 0M150 30q20 -4 40 0M250 14q30 -6 60 0M70 54q24 -5 48 0M300 56q22 -4 44 0M200 60q14 -3 28 0' stroke='white' stroke-opacity='.65' stroke-width='2.200' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
+  mask-image: linear-gradient(180deg, transparent, #000 25%, #000 70%, transparent);
+}
+
+.shimmer--near {
+  --tile: 560px;
+  --speed: 12s;
+  top: 46%;
+  height: 54%;
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='560' height='120'%3E%3Cpath d='M20 22q44 -9 88 0M230 50q34 -7 68 0M400 24q48 -10 96 0M110 96q38 -8 76 0M450 98q36 -7 72 0M300 104q22 -5 44 0' stroke='white' stroke-opacity='.7' stroke-width='3.200' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
+  mask-image: linear-gradient(180deg, transparent, #000 30%);
+}
+
+.ripples {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  width: min(48vw, 520px);
+  aspect-ratio: 5 / 1;
+  margin-left: calc(min(48vw, 520px) / -2);
+}
+
+.ripples span {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  opacity: 0;
+  animation: ripple 9s ease-out infinite;
+}
+
+.ripples span:nth-child(2) {
+  animation-delay: 3s;
+}
+
+.ripples span:nth-child(3) {
+  animation-delay: 6s;
+}
+
+/* ---- Particles ---------------------------------------------------------- */
+
+.particles span {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffdf0 30%, rgba(255, 236, 160, 0.5) 60%, transparent 72%);
+  opacity: 0;
+  animation: rise var(--time) linear var(--delay) infinite;
+}
+
+/* ---- Veil over the world on the form screens ---------------------------- */
+
+.veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20, 52, 120, 0.42), rgba(8, 70, 110, 0.5));
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.app:not([data-screen='home']) .veil {
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Home layout
+   ------------------------------------------------------------------------ */
+
+.screen {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+}
+
+.home {
+  --intro: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100dvh;
+  min-height: 560px;
+  padding: max(64px, 7.800vh) 16px max(24px, 4.500vh);
+}
+
+.home[data-intro='return'] {
+  --intro: 0.12;
+}
+
+.home-brand {
+  position: relative;
+  text-align: center;
+  transition: opacity 0.4s ease;
+}
+
+.home-brand::before {
+  /* a pool of deeper sky so the title stays readable over passing clouds */
+  content: '';
+  position: absolute;
+  inset: -45% -30%;
+  z-index: -1;
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(36, 86, 196, 0.85),
+    rgba(36, 86, 196, 0.6) 60%,
+    transparent 100%
+  );
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2.800rem, 3.200vw + 1.800rem, 4.400rem);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: #fff;
+  text-shadow:
+    0 2px 0 #cfe6ff,
+    0 5px 0 #2b5cb8,
+    0 12px 26px rgba(14, 44, 120, 0.55);
+}
+
+.tagline {
+  margin-top: 0.700rem;
+  font-size: clamp(1rem, 0.500vw + 0.900rem, 1.250rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: 0 1px 10px rgba(14, 44, 120, 0.75);
+}
+
+.island-slot {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin-block: 1vh;
+  container-type: size;
+  display: grid;
+  place-items: center;
+}
+
+.island-parallax {
+  --depth: 12;
+  transform: translate3d(
+    calc(var(--px, 0) * var(--depth) * 1px),
+    calc(var(--py, 0) * var(--depth) * 0.5px),
+    0
+  );
+}
+
+.island {
+  position: relative;
+  width: min(122cqw, 150cqh, 780px);
+  aspect-ratio: 3 / 2;
+  will-change: transform;
+  animation: bob 8s ease-in-out infinite;
+}
+
+.island-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.island-art:first-child {
+  filter: drop-shadow(0 18px 22px rgba(18, 60, 120, 0.28));
+}
+
+.home-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  transition: opacity 0.4s ease;
+}
+
+/* ---- Living details on the island --------------------------------------- */
+
+.sway {
+  transform-box: view-box;
+  animation: sway 7s ease-in-out infinite alternate;
+}
+
+.sway--b {
+  animation-duration: 6s;
+  animation-delay: -2s;
+}
+
+.sway--c {
+  animation-duration: 8s;
+  animation-delay: -4s;
+}
+
+.sway--flag {
+  animation: flutter 3.600s ease-in-out infinite alternate;
+}
+
+.fall-lines path {
+  stroke-dasharray: 14 22;
+  animation: fall 1.400s linear infinite;
+}
+
+.fall-lines path:nth-child(2) {
+  stroke-dasharray: 10 26;
+  animation-duration: 1.100s;
+}
+
+.fall-lines path:nth-child(3) {
+  animation-duration: 1.700s;
+}
+
+.mist {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mist 5s ease-in-out infinite alternate;
+}
+
+.window-glow {
+  animation: breathe 6s ease-in-out infinite;
+}
+
+.pebble {
+  transform-box: fill-box;
+  animation: bob 6s ease-in-out infinite;
+}
+
+.pebble--b {
+  animation-duration: 7.500s;
+  animation-delay: -2s;
+}
+
+.pebble--c {
+  animation-duration: 5s;
+  animation-delay: -1s;
+}
+
+/* ---- Idea star ----------------------------------------------------------- */
+
+.idea-star {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: 50% 8%;
+}
+
+.idea-star__body {
+  position: absolute;
+  left: 50%;
+  top: 1%;
+  width: 13%;
+  margin-left: -6.500%;
+  aspect-ratio: 1;
+  animation: hover 5s ease-in-out infinite;
+}
+
+.idea-star__body svg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.idea-star__halo {
+  position: absolute;
+  inset: -70%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 244, 180, 0.95) 0%,
+    rgba(255, 220, 120, 0.45) 30%,
+    transparent 62%
+  );
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.launch-ripple span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  aspect-ratio: 2.600;
+  margin: -9% 0 0 -23%;
+  border: 3px solid rgba(255, 252, 230, 0.95);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+/* ---- Start: the star glides into the island ----------------------------- */
+
+.app[data-launching] .idea-star {
+  transform: translateY(42%) scale(0.3);
+  opacity: 0;
+  transition:
+    transform 0.7s cubic-bezier(0.5, 0, 0.3, 1),
+    opacity 0.25s ease 0.55s;
+}
+
+.app[data-launching] .launch-ripple span {
+  animation: launch-ripple 0.9s ease-out 0.45s backwards;
+}
+
+.app[data-launching] .launch-ripple span:nth-child(2) {
+  animation-delay: 0.6s;
+}
+
+.app[data-launching] .home-brand,
+.app[data-launching] .home-actions {
+  opacity: 0;
+}
+
+/* ---- Staged entrance ----------------------------------------------------- */
+
+.enter {
+  animation: rise-in 1s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  animation-delay: calc(var(--at) * var(--intro, 1));
+}
+
+.enter--island {
+  --at: 0.6s;
+  animation-name: float-in;
+}
+
+.enter--logo,
+.enter--star {
+  --at: 1.2s;
+}
+
+.enter--star {
+  animation-name: star-in;
+}
+
+.enter--cta {
+  --at: 1.8s;
+}
+
+/* ---- Keyframes ----------------------------------------------------------- */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes float-in {
+  from {
+    opacity: 0;
+    transform: translateY(48px) scale(0.96);
+  }
+}
+
+@keyframes star-in {
+  from {
+    opacity: 0;
+    transform: translateY(-36px) scale(0.4);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(-22px, 0, 0);
+  }
+  to {
+    transform: translate3d(26px, -4px, 0);
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(-3px);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+@keyframes hover {
+  0%,
+  100% {
+    transform: translateY(-8%) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(8%) rotate(4deg);
+  }
+}
+
+@keyframes sway {
+  from {
+    transform: rotate(-1.400deg);
+  }
+  to {
+    transform: rotate(1.600deg);
+  }
+}
+
+@keyframes flutter {
+  from {
+    transform: skewY(-5deg);
+  }
+  to {
+    transform: skewY(6deg);
+  }
+}
+
+@keyframes fall {
+  to {
+    stroke-dashoffset: -36;
+  }
+}
+
+@keyframes mist {
+  from {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+
+@keyframes flow {
+  to {
+    transform: translate3d(calc(var(--tile) * -1), 0, 0);
+  }
+}
+
+@keyframes reflect {
+  from {
+    transform: scaleX(0.96);
+  }
+  to {
+    transform: scaleX(1.05);
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.250);
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.9;
+  }
+  80% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate3d(var(--drift), -32vh, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes launch-ripple {
+  from {
+    transform: scale(0.15);
+    opacity: 0.95;
+  }
+  to {
+    transform: scale(2.400);
+    opacity: 0;
+  }
+}
+
+/* ---- Small screens ------------------------------------------------------- */
+
+@media (max-width: 600px) {
+  .app {
+    --horizon: 66%;
+  }
+
+  .home {
+    padding-top: 76px;
+  }
+}
+
+/* ---- Reduced motion ------------------------------------------------------
+   Set from the Settings panel or the device preference. Idle loops, parallax
+   and zoom stop; only a brief fade remains. */
+
+.app[data-motion='reduced'] *,
+.app[data-motion='reduced'] *::before,
+.app[data-motion='reduced'] *::after {
+  animation: none !important;
+  transition-duration: 0.15s !important;
+}
+
+.app[data-motion='reduced'] .ambient,
+.app[data-motion='reduced'] .enter {
+  animation: fade-in 0.3s ease-out backwards !important;
+}
+
+.app[data-motion='reduced'] .ambient,
+.app[data-motion='reduced'] .layer,
+.app[data-motion='reduced'] .island-parallax {
+  transform: none;
+}
