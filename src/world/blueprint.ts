@@ -375,6 +375,19 @@ const BIOME_COLORS: Record<
   beach: { hillFar: '#7fcfe6', hillNear: '#b6e8f1', ground: '#ffe3ad', groundShade: '#f6cf8e' },
 }
 
+/**
+ * With the default style, each setting brings its own sky, so worlds differ
+ * in mood as well as in what stands in them.
+ */
+const BIOME_SKY: Record<BiomeId, [string, string]> = {
+  meadow: ['#9fd8fb', '#eaf8ff'],
+  park: ['#86d2f6', '#e9fbe6'],
+  garden: ['#ffc9b0', '#fff4d9'],
+  crags: ['#b3a2ee', '#ffdfe9'],
+  woods: ['#93dcc8', '#f3fbd9'],
+  beach: ['#6fc9f4', '#ffe9c6'],
+}
+
 const MAX_DECORATIONS = 4
 const MAX_PROPS = 3
 
@@ -465,7 +478,11 @@ export function assembleBlueprint(
   const style = STYLE_PALETTES[input.style] ?? STYLE_PALETTES.cottage
   const night = style.night || choice.night
   const biome = style.biome ?? choice.biome
-  const [skyTop, skyBottom] = night ? style.nightSky : style.sky
+  const [skyTop, skyBottom] = night
+    ? style.nightSky
+    : style.biome === null
+      ? BIOME_SKY[biome]
+      : style.sky
 
   const wanted = [...choice.decorations, ...style.decorations].filter(
     (id) =>

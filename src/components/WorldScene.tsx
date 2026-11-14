@@ -6,6 +6,7 @@ import type {
   WorldBlueprint,
   WorldColors,
 } from '../world/blueprint.ts'
+import { Foreground, Lighting, ThemeDetails } from './WorldDetails.tsx'
 import { Structure, WorldProp } from './WorldParts.tsx'
 
 type WorldSceneProps = {
@@ -16,6 +17,10 @@ type WorldSceneProps = {
   hud?: ReactNode
   /** A strip of ground under the scene for customers and the shelf. */
   street?: ReactNode
+  /** Adds light, foreground plants and business-specific touches. */
+  rich?: boolean
+  /** Buttons placed over the picture (the scene's own hotspots). */
+  overlay?: ReactNode
 }
 
 const W = 320
@@ -382,7 +387,14 @@ function Decoration({ id, c }: { id: DecorationId; c: WorldColors }) {
 // ---- The scene ------------------------------------------------------------------
 
 /** A live picture of the player's business world, drawn from its blueprint. */
-export function WorldScene({ blueprint, sign, hud, street }: WorldSceneProps) {
+export function WorldScene({
+  blueprint,
+  sign,
+  hud,
+  street,
+  rich = false,
+  overlay,
+}: WorldSceneProps) {
   const gradientId = `sky${useId().replace(/[^a-zA-Z0-9]/g, '')}`
   const c = blueprint.colors
   const night = blueprint.timeOfDay === 'night'
@@ -398,6 +410,7 @@ export function WorldScene({ blueprint, sign, hud, street }: WorldSceneProps) {
           <Sky blueprint={blueprint} gradientId={gradientId} />
           <Backdrop biome={blueprint.biome} c={c} />
           {night && <rect width={W} height={H} fill="#1d1b5a" opacity="0.28" />}
+          {rich && <Lighting blueprint={blueprint} />}
           <g transform={`translate(${BASE_X} ${BASE_Y})`}>
             <g className="w-settle" key={blueprint.structure}>
               <Structure type={blueprint.structure} colors={c} icon={blueprint.productIcon} />
@@ -406,14 +419,21 @@ export function WorldScene({ blueprint, sign, hud, street }: WorldSceneProps) {
           {blueprint.props.slice(0, PROP_SLOTS.length).map((id, i) => (
             <WorldProp key={id} id={id} {...PROP_SLOTS[i]} colors={c} icon={blueprint.productIcon} />
           ))}
+          {rich && (
+            <>
+              <ThemeDetails theme={blueprint.theme} c={c} icon={blueprint.productIcon} />
+              <Foreground biome={blueprint.biome} c={c} />
+            </>
+          )}
           {blueprint.decorations.map((id) => (
             <Decoration key={id} id={id} c={c} />
           ))}
         </svg>
+        {overlay}
         {hud && <div className="world__hud">{hud}</div>}
       </div>
       {street && (
-        <div className="world__street" style={{ background: c.ground }}>
+        <div className="world__street" style={{ backgroundColor: c.ground }}>
           {street}
         </div>
       )}

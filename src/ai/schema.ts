@@ -55,7 +55,7 @@ export const PRODUCT_ICONS = [
 
 export const BUSINESS_KINDS = ['product', 'service'] as const
 
-/** Soft pastel wall colours the buildings are designed to look good in. */
+/** Wall colours, from soft pastels to warmer and deeper tones. */
 export const WALL_COLORS = {
   cream: { wall: '#fff3dc', wallShade: '#efd6b6' },
   lilac: { wall: '#b9a6e8', wallShade: '#9d88d6' },
@@ -65,6 +65,14 @@ export const WALL_COLORS = {
   blush: { wall: '#ffe9f0', wallShade: '#f6c9d8' },
   sky: { wall: '#e3f3ff', wallShade: '#bcdcf5' },
   peach: { wall: '#ffe6d2', wallShade: '#f4c6a4' },
+  butter: { wall: '#ffe9a6', wallShade: '#f0cf78' },
+  honey: { wall: '#ffd98a', wallShade: '#eebc5a' },
+  terracotta: { wall: '#f2b48c', wallShade: '#dc9366' },
+  rosewood: { wall: '#f4b8b0', wallShade: '#e09a92' },
+  seafoam: { wall: '#cfeee4', wallShade: '#a3d9c8' },
+  sage: { wall: '#d5e6c2', wallShade: '#b3cf98' },
+  periwinkle: { wall: '#c9d4ff', wallShade: '#a4b3f0' },
+  plum: { wall: '#d9b8e6', wallShade: '#bf94d2' },
 } as const
 
 export const ACCENT_COLORS = {
@@ -76,6 +84,14 @@ export const ACCENT_COLORS = {
   violet: '#8f7ff0',
   amber: '#f2a93b',
   aqua: '#36bccb',
+  crimson: '#e85d75',
+  tangerine: '#ff8a3d',
+  gold: '#e8b422',
+  lime: '#8fce3f',
+  forest: '#3fa56b',
+  ocean: '#2f8fd6',
+  indigo: '#5a5fd6',
+  magenta: '#d65bb5',
 } as const
 
 export type WallColorId = keyof typeof WALL_COLORS

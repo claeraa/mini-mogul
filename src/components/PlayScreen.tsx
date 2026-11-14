@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { PRODUCT_SHOP } from '../game/model.ts'
 import type { DayPlan, DayResult } from '../game/model.ts'
 import { formatMoney, formatSigned } from '../game/money.ts'
@@ -21,8 +22,17 @@ import { Switch } from './AudioSettings.tsx'
 import { CloseButton, ConfirmDialog } from './ConfirmDialog.tsx'
 import { DayReport } from './DayReport.tsx'
 import { Dial } from './Dial.tsx'
+import {
+  BellIcon,
+  ChevronIcon,
+  MegaphoneIcon,
+  PeopleIcon,
+  PriceTagIcon,
+  SunIcon,
+} from './GameIcons.tsx'
 import { ShopStreet } from './ShopStreet.tsx'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
+import { ProductIcon } from './WorldParts.tsx'
 import { WorldScene } from './WorldScene.tsx'
 
 type PlayScreenProps = {
@@ -46,6 +56,52 @@ const freshGame = () => newGame(model, Math.floor(Math.random() * 2 ** 32))
 
 type Phase = 'plan' | 'open' | 'report'
 
+/** The three things a player can change before opening. */
+type Control = 'price' | 'make' | 'flyers'
+
+/** One fold-away row of the management panel: a counter that opens its control. */
+function Station({
+  icon,
+  title,
+  value,
+  note,
+  open,
+  onToggle,
+  children,
+}: {
+  icon: ReactNode
+  title: string
+  value: string
+  note: string
+  open: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
+  const id = useId()
+  return (
+    <div className="station" data-open={open ? '' : undefined}>
+      <button
+        type="button"
+        className="station__head"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={onToggle}
+      >
+        <span className="station__icon">{icon}</span>
+        <span className="station__text">
+          <span className="station__title">{title}</span>
+          <span className="station__note">{note}</span>
+        </span>
+        <span className="station__value">{value}</span>
+        <ChevronIcon className="station__chevron" />
+      </button>
+      <div className="station__fold" id={id} inert={!open}>
+        <div className="station__body">{children}</div>
+      </div>
+    </div>
+  )
+}
+
 /** The shop in its world: plan a day, watch it happen, read the report. */
 export function PlayScreen({
   shop,
@@ -63,6 +119,9 @@ export function PlayScreen({
   /** On-screen sales so far while the shop is open. */
   const [served, setServed] = useState(0)
   const [confirmRestart, setConfirmRestart] = useState(false)
+  /** Which control is unfolded in the management panel, if any. */
+  const [control, setControl] = useState<Control | null>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const skipRef = useRef<HTMLButtonElement>(null)
 
@@ -117,6 +176,24 @@ export function PlayScreen({
   const canAffordFlyers = game.cashCents >= model.flyerCostCents
   const outOfCash =
     game.inventory === 0 && maxProduction(model, game.cashCents, false) === 0
+
+  /** From the panel: fold a control open or shut. */
+  const toggleControl = (next: Control) => {
+    setControl((current) => (current === next ? null : next))
+    playSfx('plop')
+  }
+
+  /** From the world: tapping a sign or the shelf opens its control. */
+  const showControl = (next: Control) => {
+    setControl(next)
+    playSfx('plop')
+    window.requestAnimationFrame(() => {
+      panelRef.current?.scrollIntoView({
+        block: 'nearest',
+        behavior: reducedMotion ? 'auto' : 'smooth',
+      })
+    })
+  }
 
   const openForBusiness = () => {
     const today = simulateDay(model, game, plan, pickEvent(game.seed, game.day))
@@ -178,33 +255,59 @@ export function PlayScreen({
     : toSell
 
   return (
-    <section className="card card--play">
+    <section className="card card--play card--game">
       <CloseButton label="Close and return home" onClick={onExit} />
-      <p className="card__step">
-        <SparkIcon />
-        {blueprint.label}
-      </p>
-      <h1 className="card__title" ref={headingRef} tabIndex={-1}>
-        {shop.shopName}
-      </h1>
+      <header className="game-head">
+        <p className="card__step">
+          <SparkIcon />
+          {blueprint.label}
+        </p>
+        <h1 className="card__title" ref={headingRef} tabIndex={-1}>
+          {shop.shopName}
+        </h1>
+      </header>
 
       <div className="play-grid">
         <div className="play-stage">
           <WorldScene
             blueprint={blueprint}
-            sign={`Selling: ${product}`}
+            rich
             hud={
               <>
-                <span className="hud-chip">Day {open ? result.day : game.day}</span>
+                <span className="hud-chip">
+                  <SunIcon />
+                  Day {open ? result.day : game.day}
+                </span>
                 {open ? (
                   <span className="hud-chip hud-chip--open">Open!</span>
                 ) : (
-                  <span className="hud-chip hud-chip--cash">
-                    <span className="coin" />
-                    {formatMoney(game.cashCents)}
-                  </span>
+                  <>
+                    <span className="hud-chip hud-chip--cash">
+                      <span className="coin" />
+                      {formatMoney(game.cashCents)}
+                    </span>
+                    <span className="hud-chip hud-chip--crowd">
+                      <PeopleIcon />
+                      About {expected}
+                    </span>
+                  </>
                 )}
               </>
+            }
+            overlay={
+              !open && (
+                <button
+                  type="button"
+                  className="hotspot hotspot--workshop"
+                  aria-label={`Your workshop: making ${plan.produce} today. Change how many to make`}
+                  aria-expanded={control === 'make'}
+                  onClick={() => showControl('make')}
+                >
+                  <span className="hotspot__badge">
+                    <ProductIcon icon={blueprint.productIcon} />+{plan.produce}
+                  </span>
+                </button>
+              )
             }
             street={
               <ShopStreet
@@ -219,18 +322,49 @@ export function PlayScreen({
                 emptyText={
                   open ? 'Nobody came by today' : 'Nobody would buy at this price'
                 }
+                onShelfClick={open ? undefined : () => showControl('make')}
+                shelfExpanded={control === 'make'}
+                signs={
+                  <div className="street-signs">
+                    {open ? (
+                      <span className="sign sign--price" aria-hidden="true">
+                        <PriceTagIcon />
+                        <span className="sign__value">{formatMoney(result.priceCents)}</span>
+                      </span>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="sign sign--price"
+                          aria-label={`Price sign: ${formatMoney(plan.priceCents)}. Change the selling price`}
+                          aria-expanded={control === 'price'}
+                          onClick={() => showControl('price')}
+                        >
+                          <PriceTagIcon />
+                          <span className="sign__value">{formatMoney(plan.priceCents)}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="sign sign--flyers"
+                          data-on={plan.flyers ? '' : undefined}
+                          aria-label={`Flyer board: flyers are ${plan.flyers ? 'on' : 'off'}. Change flyers`}
+                          aria-expanded={control === 'flyers'}
+                          onClick={() => showControl('flyers')}
+                        >
+                          <MegaphoneIcon />
+                          <span className="sign__value">{plan.flyers ? 'On' : 'Off'}</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                }
               />
             }
           />
-          {!open && (
-            <p className="play-stage__note">
-              Move the dials and watch your street and shelf change.
-            </p>
-          )}
         </div>
 
         {open ? (
-          <div className="play-plan play-plan--compact play-open">
+          <div className="mgmt play-open">
             <p className="play-open__title" role="status">
               {shop.shopName} is open!
             </p>
@@ -251,61 +385,87 @@ export function PlayScreen({
             </button>
           </div>
         ) : (
-          <div className="play-plan play-plan--compact">
-            <h2 className="play-plan__title">Today's plan</h2>
+          <div className="mgmt" ref={panelRef}>
+            <h2 className="mgmt__title">Today's plan</h2>
+            <p className="mgmt__hint">
+              Selling: <strong>{product}</strong>. Tap a sign or your shelf in
+              the world, or a row here.
+            </p>
 
-            <Dial
-              label="Selling price"
-              display={formatMoney(plan.priceCents)}
-              valueText={`${formatMoney(plan.priceCents)}, about ${expected} customers`}
-              value={plan.priceCents}
-              min={model.minPriceCents}
-              max={model.ceilingPriceCents}
-              step={model.priceStepCents}
-              hint={
-                <>
-                  <strong>
-                    About {expected} {expected === 1 ? 'customer' : 'customers'}
-                  </strong>{' '}
-                  at this price. Higher prices earn more per sale but bring
-                  fewer customers.
-                </>
-              }
-              onChange={(priceCents) => update({ priceCents })}
-            />
-
-            <Dial
-              label="Make today"
-              display={String(plan.produce)}
-              valueText={`${plan.produce} items, costing ${formatMoney(plan.produce * model.unitCostCents)}`}
-              value={plan.produce}
-              min={0}
-              max={makeLimit}
-              step={1}
-              hint={
-                makeLimit === 0
-                  ? 'You do not have enough cash to make more today.'
-                  : `${formatMoney(model.unitCostCents)} each, so ${formatMoney(plan.produce * model.unitCostCents)} today. You can afford up to ${makeLimit}.`
-              }
-              onChange={(produce) => update({ produce })}
-            />
-
-            <div className="play-action">
-              <Switch
-                label={`Hand out flyers (${formatMoney(model.flyerCostCents)})`}
-                hint={
-                  canAffordFlyers
-                    ? `About ${model.flyerDemandPct}% more customers today.`
-                    : 'Not enough cash for flyers today.'
-                }
-                checked={plan.flyers}
-                onToggle={() => update({ flyers: !plan.flyers })}
+            <Station
+              icon={<PriceTagIcon />}
+              title="Price"
+              value={formatMoney(plan.priceCents)}
+              note={`About ${expected} ${expected === 1 ? 'customer' : 'customers'}`}
+              open={control === 'price'}
+              onToggle={() => toggleControl('price')}
+            >
+              <Dial
+                label="Selling price"
+                display={formatMoney(plan.priceCents)}
+                valueText={`${formatMoney(plan.priceCents)}, about ${expected} customers`}
+                value={plan.priceCents}
+                min={model.minPriceCents}
+                max={model.ceilingPriceCents}
+                step={model.priceStepCents}
+                hint="Higher prices earn more per sale but bring fewer customers."
+                onChange={(priceCents) => update({ priceCents })}
               />
-            </div>
+            </Station>
+
+            <Station
+              icon={<ProductIcon icon={blueprint.productIcon} />}
+              title="Make"
+              value={`+${plan.produce}`}
+              note={`${toSell} on the shelf to sell`}
+              open={control === 'make'}
+              onToggle={() => toggleControl('make')}
+            >
+              <Dial
+                label="Make today"
+                display={String(plan.produce)}
+                valueText={`${plan.produce} items, costing ${formatMoney(plan.produce * model.unitCostCents)}`}
+                value={plan.produce}
+                min={0}
+                max={makeLimit}
+                step={1}
+                hint={
+                  makeLimit === 0
+                    ? 'You do not have enough cash to make more today.'
+                    : `${formatMoney(model.unitCostCents)} each, so ${formatMoney(plan.produce * model.unitCostCents)} today. You can afford up to ${makeLimit}.`
+                }
+                onChange={(produce) => update({ produce })}
+              />
+            </Station>
+
+            <Station
+              icon={<MegaphoneIcon />}
+              title="Flyers"
+              value={plan.flyers ? 'On' : 'Off'}
+              note={
+                canAffordFlyers
+                  ? `${formatMoney(model.flyerCostCents)} for about ${model.flyerDemandPct}% more`
+                  : 'Not enough cash today'
+              }
+              open={control === 'flyers'}
+              onToggle={() => toggleControl('flyers')}
+            >
+              <div className="play-action">
+                <Switch
+                  label={`Hand out flyers (${formatMoney(model.flyerCostCents)})`}
+                  hint={
+                    canAffordFlyers
+                      ? `About ${model.flyerDemandPct}% more customers today.`
+                      : 'Not enough cash for flyers today.'
+                  }
+                  checked={plan.flyers}
+                  onToggle={() => update({ flyers: !plan.flyers })}
+                />
+              </div>
+            </Station>
 
             <p className="plan-summary">
-              <strong>{toSell}</strong> to sell, spending{' '}
-              <strong>{formatMoney(spending)}</strong> of your{' '}
+              Spending <strong>{formatMoney(spending)}</strong> of your{' '}
               {formatMoney(game.cashCents)}.
               {yesterday &&
                 ` Yesterday: ${formatSigned(yesterday.operatingProfitCents)} ${
@@ -320,7 +480,14 @@ export function PlayScreen({
               </p>
             )}
 
-            <div className="card__actions">
+            <div className="mgmt__actions">
+              <TactileButton size="large" onClick={openForBusiness} disabled={toSell === 0}>
+                <BellIcon />
+                Open for Business
+              </TactileButton>
+              {toSell === 0 && !outOfCash && (
+                <p className="field__help">Make at least one item to open.</p>
+              )}
               <button
                 type="button"
                 className="text-button"
@@ -329,13 +496,7 @@ export function PlayScreen({
               >
                 Start over
               </button>
-              <TactileButton onClick={openForBusiness} disabled={toSell === 0}>
-                Open for Business
-              </TactileButton>
             </div>
-            {toSell === 0 && !outOfCash && (
-              <p className="field__help">Make at least one item to open.</p>
-            )}
           </div>
         )}
       </div>

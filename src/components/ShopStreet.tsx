@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { ProductIconId } from '../world/blueprint.ts'
 import type { StageVisitor } from '../world/stage.ts'
 import { ProductIcon } from './WorldParts.tsx'
@@ -17,14 +17,20 @@ type ShopStreetProps = {
   /** What each sale adds to the till, e.g. "+$3.00". */
   coinLabel: string
   emptyText: string
+  /** Signs standing in the street, between the customers and the shelf. */
+  signs?: ReactNode
+  /** Makes the shelf a button (it opens the production controls). */
+  onShelfClick?: () => void
+  shelfExpanded?: boolean
 }
 
 const SHELF_ICONS = 10
 
 /**
  * The strip of ground in front of the shop: customers on the left, the
- * shelf on the right. It is a picture of numbers shown in words elsewhere,
- * so it is hidden from screen readers.
+ * shelf on the right. The customers are a picture of numbers shown in words
+ * elsewhere, so they are hidden from screen readers; the signs and shelf are
+ * real buttons.
  */
 export function ShopStreet({
   icon,
@@ -36,16 +42,30 @@ export function ShopStreet({
   reactions,
   coinLabel,
   emptyText,
+  signs,
+  onShelfClick,
+  shelfExpanded,
 }: ShopStreetProps) {
   const shown = Math.min(shelfCount, SHELF_ICONS)
+  const shelf = (
+    <>
+      <span className="shelf__label">Shelf: {shelfCount}</span>
+      <span className="shelf__board">
+        {shown === 0 && <span className="shelf__empty">Empty</span>}
+        {Array.from({ length: shown }, (_, i) => (
+          <ProductIcon key={i} icon={icon} />
+        ))}
+        {shelfCount > shown && <span className="shelf__more">+{shelfCount - shown}</span>}
+      </span>
+    </>
+  )
 
   return (
     <div
       className="street"
-      aria-hidden="true"
       style={{ '--stagger': `${staggerMs}ms`, display: 'contents' } as CSSProperties}
     >
-      <div className="guests">
+      <div className="guests" aria-hidden="true">
         {visitors.length === 0 && <span className="guests__empty">{emptyText}</span>}
         {visitors.map((visitor, i) => (
           <span
@@ -75,18 +95,23 @@ export function ShopStreet({
         {extra > 0 && <span className="guests__more">+{extra} more</span>}
       </div>
 
-      <div className="shelf">
-        <span className="shelf__label">Shelf: {shelfCount}</span>
-        <div className="shelf__board">
-          {shown === 0 && <span className="shelf__empty">Empty</span>}
-          {Array.from({ length: shown }, (_, i) => (
-            <ProductIcon key={i} icon={icon} />
-          ))}
-          {shelfCount > shown && (
-            <span className="shelf__more">+{shelfCount - shown}</span>
-          )}
+      {signs}
+
+      {onShelfClick ? (
+        <button
+          type="button"
+          className="shelf shelf--button"
+          aria-label={`Shelf: ${shelfCount} to sell. Change how many to make`}
+          aria-expanded={shelfExpanded}
+          onClick={onShelfClick}
+        >
+          {shelf}
+        </button>
+      ) : (
+        <div className="shelf" aria-hidden="true">
+          {shelf}
         </div>
-      </div>
+      )}
     </div>
   )
 }

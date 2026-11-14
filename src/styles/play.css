@@ -1,0 +1,469 @@
+/* ---------------------------------------------------------------------------
+   The gameplay screen: the world as the main attraction, with in-world signs
+   and a small fold-away management panel beside it.
+   ------------------------------------------------------------------------ */
+
+.card--game {
+  width: min(100%, 1240px);
+  gap: 12px;
+  padding: clamp(14px, 2.200vw, 24px);
+}
+
+.game-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  padding-right: 52px;
+}
+
+.card--game .game-head .card__title {
+  font-size: clamp(1.350rem, 1.400vw + 0.900rem, 1.800rem);
+}
+
+.card--game .play-grid {
+  grid-template-columns: minmax(0, 68fr) minmax(0, 32fr);
+  gap: clamp(12px, 1.600vw, 20px);
+  align-items: start;
+}
+
+.card--game .world__view {
+  container-type: inline-size;
+  box-shadow:
+    inset 0 0 0 4px rgba(255, 255, 255, 0.7),
+    0 10px 24px rgba(8, 40, 96, 0.22);
+}
+
+.card--game .world__street {
+  flex-wrap: wrap;
+  row-gap: 14px;
+  box-shadow:
+    inset 0 0 0 4px rgba(255, 255, 255, 0.7),
+    0 10px 24px rgba(8, 40, 96, 0.22);
+}
+
+.w-rays {
+  transform-origin: 262px 40px;
+  transform-box: view-box;
+  animation: w-rays 9s ease-in-out infinite alternate;
+}
+
+@keyframes w-rays {
+  from {
+    opacity: 0.08;
+    transform: rotate(-2deg);
+  }
+  to {
+    opacity: 0.2;
+    transform: rotate(2deg);
+  }
+}
+
+.game-icon {
+  flex: none;
+  width: 1.250em;
+  height: 1.250em;
+}
+
+.hud-chip--crowd {
+  margin-left: auto;
+}
+
+/* ---- Things you can tap in the world -------------------------------------- */
+
+.hotspot {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 28px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The building itself: your workshop. */
+.hotspot--workshop {
+  left: 31%;
+  top: 22%;
+  width: 38%;
+  height: 62%;
+  transition: background-color 0.25s ease;
+}
+
+.hotspot--workshop:hover,
+.hotspot--workshop[aria-expanded='true'] {
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0));
+}
+
+.hotspot__badge {
+  position: absolute;
+  top: 2%;
+  right: -4%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.250em;
+  padding: 0.150em 0.650em 0.150em 0.400em;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(0.850rem, 2.400cqw, 1.150rem);
+  color: var(--sun-ink);
+  background: linear-gradient(180deg, #fff6c9, #ffd978);
+  box-shadow:
+    0 3px 0 #e58a1f,
+    0 6px 12px rgba(8, 40, 96, 0.25);
+  animation: sign-bob 3.200s ease-in-out infinite;
+  transition: transform 0.15s ease;
+}
+
+.hotspot:hover .hotspot__badge {
+  transform: scale(1.08);
+}
+
+.hotspot:active .hotspot__badge {
+  transform: scale(0.96) translateY(2px);
+}
+
+.hotspot:focus-visible {
+  outline: 3px solid var(--deep);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 7px rgba(255, 210, 90, 0.9);
+}
+
+/* Wooden signs standing in the street. */
+.street-signs {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.sign {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 62px;
+  min-height: 52px;
+  margin-bottom: 12px;
+  padding: 5px 10px 4px;
+  border: 0;
+  border-radius: 12px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.1;
+  color: #4a2a1c;
+  background: linear-gradient(180deg, #f6d9a8, #e7b877);
+  box-shadow:
+    inset 0 0 0 2px #b07a45,
+    0 4px 0 #8a5a48;
+  transform-origin: 50% 100%;
+  transition: transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* the post */
+.sign::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 3px);
+  top: 100%;
+  width: 6px;
+  height: 14px;
+  border-radius: 0 0 3px 3px;
+  background: #8a5a48;
+}
+
+.sign .game-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.sign__value {
+  font-size: 1.050rem;
+  font-variant-numeric: tabular-nums;
+}
+
+button.sign {
+  animation: sign-bob 3.200s ease-in-out infinite;
+}
+
+button.sign--flyers {
+  animation-delay: -1.300s;
+}
+
+button.sign:hover {
+  transform: rotate(-3deg) scale(1.06);
+}
+
+button.sign:active {
+  transform: translateY(3px) scale(0.97);
+}
+
+button.sign[aria-expanded='true'],
+.shelf--button[aria-expanded='true'] .shelf__board {
+  box-shadow:
+    inset 0 0 0 2px #b07a45,
+    0 4px 0 #8a5a48,
+    0 0 0 4px rgba(255, 226, 130, 0.95);
+}
+
+.sign--flyers[data-on] {
+  background: linear-gradient(180deg, #ffd9e6, #ffb3cc);
+}
+
+button.sign:focus-visible,
+.shelf--button:focus-visible {
+  outline: 3px solid var(--deep);
+  outline-offset: 3px;
+}
+
+.shelf--button {
+  padding: 0;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border-radius: 12px;
+  transition: transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shelf--button:hover {
+  transform: translateY(-3px);
+}
+
+.shelf--button:active {
+  transform: translateY(1px);
+}
+
+.shelf__board {
+  transition: box-shadow 0.2s ease;
+}
+
+@keyframes sign-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -3px;
+  }
+}
+
+/* ---- The management panel -------------------------------------------------- */
+
+.mgmt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #fffaf0 0%, #fff3dc 100%);
+  box-shadow:
+    inset 0 0 0 3px #f0d9b0,
+    0 6px 0 #e3c594;
+}
+
+.mgmt__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.250rem;
+  color: #5f3d42;
+}
+
+.mgmt__hint {
+  font-size: 0.850rem;
+  line-height: 1.35;
+  color: #7a5a48;
+  overflow-wrap: anywhere;
+}
+
+.station {
+  border-radius: 18px;
+  background: #fff;
+  box-shadow:
+    inset 0 0 0 2px #ecd9b8,
+    0 3px 0 #e3c594;
+  transition: box-shadow 0.2s ease;
+}
+
+.station[data-open] {
+  box-shadow:
+    inset 0 0 0 2px #e5a93a,
+    0 3px 0 #e58a1f;
+}
+
+.station__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 54px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 18px;
+  text-align: left;
+  background: transparent;
+  transition: transform 0.12s ease;
+}
+
+.station__head:active {
+  transform: translateY(2px);
+}
+
+.station__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: #fff1cc;
+}
+
+.station__icon .game-icon,
+.station__icon .product-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.station__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.station__title {
+  font-weight: 800;
+}
+
+.station__note {
+  font-size: 0.820rem;
+  color: var(--ink-soft);
+}
+
+.station__value {
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.300rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--deep);
+}
+
+.station__chevron {
+  color: #b07a45;
+  transition: transform 0.25s ease;
+}
+
+.station[data-open] .station__chevron {
+  transform: rotate(180deg);
+}
+
+/* Folds open smoothly without measuring heights. */
+.station__fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.28s ease;
+}
+
+.station[data-open] .station__fold {
+  grid-template-rows: 1fr;
+}
+
+.station__body {
+  min-height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  transition: visibility 0.28s;
+}
+
+.station[data-open] .station__body {
+  visibility: visible;
+  padding: 2px 12px 12px;
+}
+
+.station .dial {
+  gap: 4px;
+}
+
+.station .dial__top {
+  display: none;
+}
+
+.station .field__help {
+  font-size: 0.850rem;
+  line-height: 1.35;
+}
+
+.station .play-action .setting-row {
+  padding: 6px 12px;
+}
+
+.mgmt .plan-summary {
+  font-size: 0.920rem;
+  color: #5f3d42;
+}
+
+.mgmt__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.mgmt__actions .tactile__face {
+  gap: 0.450em;
+  min-height: 58px;
+  padding-inline: 0.800em;
+  font-size: clamp(1.100rem, 1.300vw + 0.500rem, 1.350rem);
+  white-space: nowrap;
+}
+
+.mgmt__actions .game-icon {
+  width: 1.300em;
+  height: 1.300em;
+}
+
+.mgmt.play-open {
+  align-items: center;
+  justify-content: center;
+}
+
+.mgmt :focus-visible {
+  outline-color: var(--deep);
+  box-shadow: 0 0 0 5px rgba(255, 210, 90, 0.9);
+}
+
+@media (max-width: 860px) {
+  .card--game .play-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .street-signs {
+    order: 3;
+    margin-left: 0;
+  }
+
+  .card--game .shelf {
+    order: 4;
+    flex: 1;
+    width: auto;
+  }
+
+  .card--game .guests {
+    flex: 1 0 100%;
+  }
+
+  .hud-chip {
+    font-size: 0.900rem;
+  }
+}
