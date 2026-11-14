@@ -9,6 +9,8 @@ type ImagineScreenProps = {
   initialIdea: string
   /** True when the prefilled idea itself has not been saved yet. */
   unsavedDraft: boolean
+  /** True when changing the idea of a shop that is already saved. */
+  editingSaved: boolean
   /** Leave for home, dropping whatever is unsaved. */
   onExit: () => void
   onDirtyChange: (dirty: boolean) => void
@@ -28,6 +30,7 @@ export function ImagineScreen({
   initialName,
   initialIdea,
   unsavedDraft,
+  editingSaved,
   onExit,
   onDirtyChange,
   onSubmit,
@@ -72,10 +75,12 @@ export function ImagineScreen({
       <CloseButton label="Close and return home" onClick={leave} />
       <p className="card__step">
         <SparkIcon />
-        Imagine
+        {editingSaved ? 'Edit' : 'Imagine'}
       </p>
       <h1 className="card__title" ref={headingRef} tabIndex={-1}>
-        What business would you like to build?
+        {editingSaved
+          ? 'Change your business idea'
+          : 'What business would you like to build?'}
       </h1>
 
       <div className="field">
@@ -141,7 +146,9 @@ export function ImagineScreen({
         <button type="button" className="text-button" onClick={leave}>
           Back
         </button>
-        <TactileButton type="submit">Plant this idea</TactileButton>
+        <TactileButton type="submit">
+          {editingSaved ? 'Save changes' : 'Bring it to life'}
+        </TactileButton>
       </div>
 
       <ConfirmDialog

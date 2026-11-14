@@ -34,7 +34,7 @@ function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [progress, setProgress] = useState<Progress | null>(loadProgress)
   // A new idea being shaped while a saved shop already exists. It lives only
-  // in memory, so the saved shop is untouched until "Save my shop".
+  // in memory, so the saved shop is untouched until it is saved.
   const [draft, setDraft] = useState<Progress | null>(null)
   const [resuming, setResuming] = useState(false)
   const [dirty, setDirty] = useState(false)
@@ -113,7 +113,20 @@ function App() {
     go('create')
   }
 
+  // Reworking the saved shop's idea, rather than starting a new business.
+  const editingSaved = resuming && draft === null && progress?.step === 'ready'
+
   const handleIdea = (values: { playerName: string; idea: string }) => {
+    if (editingSaved && progress) {
+      // "Save changes": the same shop keeps its name, style and game days;
+      // only its idea (and so its world) changes.
+      const next: Progress = { ...progress, ...values }
+      setProgress(next)
+      saveProgress(next)
+      playSfx('chime')
+      go('create')
+      return
+    }
     const base = resuming ? working : null
     const sameIdea = base?.idea === values.idea
     const next: Progress = {
@@ -193,6 +206,7 @@ function App() {
                 initialName={resuming ? (working?.playerName ?? '') : ''}
                 initialIdea={resuming ? (working?.idea ?? '') : ''}
                 unsavedDraft={draft !== null}
+                editingSaved={editingSaved}
                 onExit={() => go('home')}
                 onDirtyChange={setDirty}
                 onSubmit={handleIdea}
@@ -220,7 +234,11 @@ function App() {
 
           {screen === 'play' && progress?.step === 'ready' && (
             <motion.main key="play" className="screen screen--form" {...formMotion}>
-              <PlayScreen shop={progress} onExit={() => go('home')} />
+              <PlayScreen
+                shop={progress}
+                reducedMotion={reducedMotion}
+                onExit={() => go('home')}
+              />
             </motion.main>
           )}
         </AnimatePresence>

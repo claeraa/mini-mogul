@@ -1,0 +1,1138 @@
+/* ---------------------------------------------------------------------------
+   Themed business worlds: the scene frame, its little animations, the
+   street where customers gather, and the day report's three books.
+   (Reduced motion is handled globally in scene.css.)
+   ------------------------------------------------------------------------ */
+
+.world {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.world__view {
+  position: relative;
+  width: 100%;
+  border-radius: 24px 24px 0 0;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55);
+}
+
+.world__view:last-child,
+.world__view:has(+ .world__sign) {
+  border-radius: 24px;
+}
+
+.world__view svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.world__sign {
+  position: relative;
+  z-index: 1;
+  max-width: calc(100% - 24px);
+  margin-top: -16px;
+  padding: 0.300em 1.100em;
+  border-radius: 14px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.100rem;
+  text-align: center;
+  color: #fff8e6;
+  background: #8a5a48;
+  box-shadow: 0 4px 0 #5f3d42;
+  overflow-wrap: anywhere;
+}
+
+.world-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.500em;
+  align-self: center;
+  padding: 0.250em 0.900em 0.250em 0.500em;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.950rem;
+  color: #0d5b6b;
+  background: #e6f8f8;
+}
+
+.product-icon {
+  flex: none;
+  width: 1.500em;
+  height: 1.500em;
+}
+
+/* ---- Scene animations ---------------------------------------------------- */
+
+.world svg [class^='w-'],
+.world svg [class*=' w-'] {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.w-cloud {
+  animation: w-drift 16s ease-in-out infinite alternate;
+}
+
+.w-cloud--slow {
+  animation-duration: 24s;
+  animation-direction: alternate-reverse;
+}
+
+.w-twinkle {
+  animation: w-twinkle 2.600s ease-in-out infinite;
+}
+
+.w-glow {
+  animation: w-glow 4s ease-in-out infinite;
+}
+
+.w-firefly {
+  animation: w-firefly 5s ease-in-out infinite;
+}
+
+.w-wander {
+  animation: w-wander 7s ease-in-out infinite;
+}
+
+.w-flap {
+  transform-origin: right center;
+  animation: w-flap 0.500s ease-in-out infinite alternate;
+}
+
+.w-flap--right {
+  transform-origin: left center;
+}
+
+.w-sway {
+  transform-origin: left center;
+  animation: w-sway 2.400s ease-in-out infinite alternate;
+}
+
+.w-sway--soft {
+  transform-origin: center top;
+  animation-name: w-sway-soft;
+  animation-duration: 4s;
+}
+
+.w-rise {
+  animation: w-rise 4.200s ease-in infinite;
+}
+
+.w-fall {
+  animation: w-fall 6.500s linear infinite;
+}
+
+.w-glide {
+  animation: w-glide 9s ease-in-out infinite alternate;
+}
+
+.w-smoke {
+  opacity: 0;
+  animation: w-smoke 3.600s ease-out infinite;
+}
+
+.w-shimmer {
+  animation: w-shimmer 3.500s ease-in-out infinite alternate;
+}
+
+.w-blink {
+  animation: w-blink 4.500s ease-in-out infinite;
+}
+
+.w-wobble {
+  transform-origin: center bottom;
+  animation: w-wobble 3s ease-in-out infinite;
+}
+
+.w-bounce {
+  animation: w-bounce 1.800s ease-in-out infinite;
+}
+
+.w-nod {
+  animation: w-nod 3.200s ease-in-out infinite alternate;
+}
+
+.w-drip {
+  animation: w-drip 1.400s ease-in infinite;
+}
+
+.w-settle {
+  transform-origin: center bottom;
+  animation: w-settle 0.450s cubic-bezier(0.3, 1.5, 0.5, 1) backwards;
+}
+
+@keyframes w-drift {
+  to {
+    transform: translateX(16px);
+  }
+}
+
+@keyframes w-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.6);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes w-glow {
+  50% {
+    transform: scale(1.14);
+  }
+}
+
+@keyframes w-firefly {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translate(0, 0);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(6px, -8px);
+  }
+  70% {
+    opacity: 0.7;
+    transform: translate(-5px, -3px);
+  }
+}
+
+@keyframes w-wander {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(-8deg);
+  }
+  30% {
+    transform: translate(14px, -10px) rotate(10deg);
+  }
+  65% {
+    transform: translate(-8px, -16px) rotate(-4deg);
+  }
+}
+
+@keyframes w-flap {
+  to {
+    transform: scaleX(0.35);
+  }
+}
+
+@keyframes w-sway {
+  from {
+    transform: skewY(-5deg);
+  }
+  to {
+    transform: skewY(5deg);
+  }
+}
+
+@keyframes w-sway-soft {
+  from {
+    transform: rotate(-0.6deg);
+  }
+  to {
+    transform: rotate(0.6deg);
+  }
+}
+
+@keyframes w-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-34px) scale(1.15);
+  }
+}
+
+@keyframes w-fall {
+  0% {
+    opacity: 0;
+    transform: translate(0, -10px) rotate(0deg);
+  }
+  15%,
+  80% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-26px, 70px) rotate(220deg);
+  }
+}
+
+@keyframes w-glide {
+  to {
+    transform: translate(40px, -8px);
+  }
+}
+
+@keyframes w-smoke {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.5);
+  }
+  25% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(12px, -30px) scale(1.5);
+  }
+}
+
+@keyframes w-shimmer {
+  to {
+    transform: translateX(10px);
+    opacity: 0.4;
+  }
+}
+
+@keyframes w-blink {
+  0%,
+  44%,
+  50%,
+  100% {
+    transform: scaleY(1);
+  }
+  47% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes w-wobble {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0deg);
+  }
+  70% {
+    transform: rotate(-7deg);
+  }
+  80% {
+    transform: rotate(6deg);
+  }
+  90% {
+    transform: rotate(-3deg);
+  }
+}
+
+@keyframes w-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes w-nod {
+  to {
+    transform: translateX(2px) rotate(8deg);
+  }
+}
+
+@keyframes w-drip {
+  0% {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes w-settle {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+
+/* ---- Heads-up chips over the sky ----------------------------------------- */
+
+.world__hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.hud-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.400em;
+  padding: 0.150em 0.750em;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.050rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 3px 0 rgba(18, 58, 122, 0.18);
+}
+
+.hud-chip--cash {
+  color: #5a3200;
+  background: #ffe9a8;
+}
+
+.hud-chip--open {
+  margin-left: auto;
+  color: #fff;
+  background: #1f8f86;
+}
+
+.coin {
+  flex: none;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3a0 0 25%, #ffc23d 30% 100%);
+  box-shadow:
+    inset 0 0 0 2px #e58a1f,
+    0 1px 0 #b96a10;
+}
+
+/* ---- The street: customers and the shelf --------------------------------- */
+
+.world__street {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 84px;
+  padding: 10px 12px 12px;
+  border-radius: 0 0 24px 24px;
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55);
+}
+
+.world[data-time='night'] .world__street {
+  background-image: linear-gradient(rgba(29, 27, 90, 0.28), rgba(29, 27, 90, 0.28));
+}
+
+.world__street + .world__sign {
+  margin-top: 10px;
+}
+
+.guests {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 0;
+  min-height: 46px;
+}
+
+.guest {
+  position: relative;
+  flex: none;
+  width: 22px;
+  height: 28px;
+  margin-top: 16px;
+  animation: guest-in 0.350s cubic-bezier(0.3, 1.5, 0.5, 1) backwards;
+}
+
+.guest__body {
+  position: absolute;
+  inset: 0;
+  border-radius: 11px 11px 7px 7px;
+  background: #ff9c82;
+  animation: guest-bob 2.400s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -0.37s);
+}
+
+.guest__body::before {
+  /* head */
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: -12px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffe2c4;
+  box-shadow: 0 0 0 2px rgba(23, 50, 92, 0.16);
+}
+
+.guest__body::after {
+  /* eyes */
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: -6px;
+  width: 2.500px;
+  height: 3.500px;
+  border-radius: 2px;
+  background: #17325c;
+  box-shadow: 5.500px 0 0 #17325c;
+}
+
+.guest:nth-child(5n + 2) .guest__body {
+  background: #8f7ff0;
+}
+
+.guest:nth-child(5n + 3) .guest__body {
+  background: #4fb57c;
+}
+
+.guest:nth-child(5n + 4) .guest__body {
+  background: #36b3cf;
+}
+
+.guest:nth-child(5n + 5) .guest__body {
+  background: #f2a93b;
+}
+
+.guest:nth-child(3n + 2) .guest__body::before {
+  background: #f3c9a0;
+}
+
+.guest:nth-child(4n + 3) .guest__body::before {
+  background: #c99872;
+}
+
+.guests__more {
+  align-self: center;
+  padding: 0.100em 0.600em;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.850rem;
+  white-space: nowrap;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.guests__empty {
+  align-self: center;
+  padding: 0.200em 0.800em;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.900rem;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* While the shop is open each guest takes a turn at the counter. */
+
+.guest--turn {
+  animation: guest-turn 1.500s ease-in-out forwards;
+  animation-delay: calc(var(--i) * var(--stagger));
+}
+
+.guest--turn.guest--missed {
+  animation-name: guest-turn-missed;
+}
+
+.guest__bubble,
+.guest__coin {
+  position: absolute;
+  left: 50%;
+  z-index: 2;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.guest__bubble {
+  bottom: calc(100% + 18px + var(--row) * 26px);
+  padding: 0.150em 0.650em;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.800rem;
+  color: var(--ink);
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(10, 44, 100, 0.25);
+  transform: translateX(-50%);
+  animation: bubble-pop 1.300s ease-out forwards;
+  animation-delay: calc(var(--i) * var(--stagger) + 0.150s);
+}
+
+.guest__bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.guest:first-child .guest__bubble {
+  left: 0;
+  transform: none;
+}
+
+.guest:first-child .guest__bubble::after {
+  left: 11px;
+}
+
+.guest--missed .guest__bubble {
+  color: #7a1f1a;
+  background: #ffe1dc;
+}
+
+.guest__coin {
+  bottom: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.900rem;
+  color: #5a3200;
+  text-shadow: 0 1px 0 #fff;
+  transform: translateX(-50%);
+  animation: coin-pop 1.200s ease-out forwards;
+  animation-delay: calc(var(--i) * var(--stagger) + 0.450s);
+}
+
+@keyframes guest-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.6);
+  }
+}
+
+@keyframes guest-bob {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes guest-turn {
+  0% {
+    transform: translateY(0);
+  }
+  18% {
+    transform: translateY(-12px);
+  }
+  36% {
+    transform: translateY(0);
+  }
+  48% {
+    transform: translateY(-5px);
+  }
+  60%,
+  78% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+}
+
+@keyframes guest-turn-missed {
+  0% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-3px);
+  }
+  30% {
+    transform: translateX(3px);
+  }
+  45% {
+    transform: translateX(-2px);
+  }
+  60%,
+  78% {
+    opacity: 1;
+    filter: none;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0.4;
+    filter: grayscale(1);
+    transform: translateX(0);
+  }
+}
+
+@keyframes bubble-pop {
+  0% {
+    opacity: 0;
+    margin-bottom: -8px;
+  }
+  15%,
+  75% {
+    opacity: 1;
+    margin-bottom: 0;
+  }
+  100% {
+    opacity: 0;
+    margin-bottom: 4px;
+  }
+}
+
+@keyframes coin-pop {
+  0% {
+    opacity: 0;
+    margin-bottom: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    margin-bottom: 44px;
+  }
+}
+
+/* ---- The shelf ------------------------------------------------------------ */
+
+.shelf {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: min(46%, 190px);
+}
+
+.shelf__label {
+  align-self: flex-end;
+  padding: 0.050em 0.600em;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.800rem;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.shelf__board {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 2px;
+  min-height: 34px;
+  padding: 4px 6px 3px;
+  border-radius: 10px 10px 6px 6px;
+  border-bottom: 7px solid #8a5a48;
+  background: rgba(255, 250, 240, 0.9);
+  box-shadow: 0 3px 0 #5f3d42;
+}
+
+.shelf__board .product-icon {
+  width: 22px;
+  height: 22px;
+  animation: guest-in 0.250s ease-out backwards;
+}
+
+.shelf__more {
+  align-self: center;
+  padding: 0 0.300em;
+  font-weight: 800;
+  font-size: 0.800rem;
+  color: #5f3d42;
+}
+
+.shelf__empty {
+  align-self: center;
+  margin: auto;
+  font-weight: 700;
+  font-size: 0.800rem;
+  color: #8a5a48;
+}
+
+/* ---- Play layout: scene first, compact controls beside it ---------------- */
+
+.card--play .play-grid {
+  grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+}
+
+.play-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.play-stage__note {
+  text-align: center;
+  font-size: 0.950rem;
+  color: var(--ink-soft);
+}
+
+.play-plan--compact {
+  gap: 12px;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+
+.play-plan--compact .dial {
+  gap: 4px;
+}
+
+.play-plan--compact .dial__value {
+  font-size: 1.450rem;
+}
+
+.play-plan--compact .field__help {
+  font-size: 0.850rem;
+  line-height: 1.35;
+}
+
+.play-plan--compact .plan-summary {
+  font-size: 0.950rem;
+}
+
+.play-plan--compact .setting-row {
+  padding: 6px 12px;
+}
+
+.play-plan--compact .card__actions {
+  margin-top: 2px;
+}
+
+.play-plan--compact .card__actions .tactile {
+  flex: 1;
+}
+
+.play-open {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 220px;
+  text-align: center;
+}
+
+.play-open__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.500rem;
+}
+
+/* ---- Day report: three books ---------------------------------------------- */
+
+.books {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.book {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+
+.book--profit {
+  box-shadow: inset 0 0 0 2px #a9dfbb;
+}
+
+.book--cash {
+  box-shadow: inset 0 0 0 2px #f1d27c;
+}
+
+.book--shelf {
+  grid-column: 1 / -1;
+  box-shadow: inset 0 0 0 2px #cbbdf0;
+}
+
+.book__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.book__badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  font-size: 1.100rem;
+  background: #c9f2d6;
+}
+
+.book--cash .book__badge {
+  background: #ffe9a8;
+}
+
+.book--shelf .book__badge {
+  background: #e6defa;
+}
+
+.book__badge .product-icon,
+.book__badge .spark-icon {
+  width: 22px;
+  height: 22px;
+  color: #1f8f5a;
+}
+
+.book__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.200rem;
+  line-height: 1.15;
+}
+
+.book__sub {
+  font-size: 0.850rem;
+  color: var(--ink-soft);
+}
+
+.book__group {
+  margin-top: 4px;
+  font-size: 0.780rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.book__lines {
+  display: flex;
+  flex-direction: column;
+}
+
+.book__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 2px dashed var(--line);
+}
+
+.book__line dt {
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.book__line dt span {
+  display: block;
+  font-size: 0.820rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.book__line dd {
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.book__line--sum {
+  border-bottom: 0;
+}
+
+.book__line--sum dt {
+  font-weight: 800;
+}
+
+.book__total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-weight: 800;
+  color: #0b4f3f;
+  background: #c9f2d6;
+}
+
+.book__total strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.500rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.book__total--down {
+  color: #7a1f1a;
+  background: #ffd9d4;
+}
+
+.book--cash .book__total:not(.book__total--down) {
+  color: #5a3200;
+  background: #ffe9a8;
+}
+
+.book__foot {
+  font-size: 0.900rem;
+  color: var(--ink-soft);
+}
+
+.shelf-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.shelf-flow__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 62px;
+  padding: 6px 10px;
+  border-radius: 14px;
+  background: #f1ecfc;
+}
+
+.shelf-flow__step strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.350rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.shelf-flow__step span {
+  font-size: 0.780rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.shelf-flow__step--result {
+  color: #fff;
+  background: #6f5fd0;
+}
+
+.shelf-flow__step--result span {
+  color: #ece8ff;
+}
+
+.shelf-flow__op {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.300rem;
+  color: var(--ink-soft);
+}
+
+.shelf-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.shelf-icons .product-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* ---- Why profit and cash differ ------------------------------------------- */
+
+.bridge {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #eef6ff 0%, #f3edff 100%);
+}
+
+.bridge__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.200rem;
+}
+
+.bridge__sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.bridge__chip {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+
+.bridge__chip span {
+  font-size: 0.780rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+.bridge__chip strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.200rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bridge__chip--profit {
+  box-shadow: inset 0 0 0 2px #a9dfbb;
+}
+
+.bridge__chip--shelf {
+  box-shadow: inset 0 0 0 2px #cbbdf0;
+}
+
+.bridge__chip--cash {
+  box-shadow: inset 0 0 0 2px #f1d27c;
+}
+
+.bridge ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 1.200em;
+  list-style: disc;
+}
+
+@media (max-width: 720px) {
+  .card--play .play-grid,
+  .books {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  .guests {
+    gap: 3px;
+  }
+
+  .guest {
+    transform-origin: bottom left;
+    zoom: 0.85;
+  }
+}

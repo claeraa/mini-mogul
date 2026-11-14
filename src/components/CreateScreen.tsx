@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Progress, ThemeId } from '../lib/storage.ts'
 import { DISCARD_COPY, THEMES } from '../lib/constants.ts'
 import { CloseButton, ConfirmDialog } from './ConfirmDialog.tsx'
-import { ShopPreview } from './ShopPreview.tsx'
+import { generateWorldBlueprint, offeringLabel } from '../world/blueprint.ts'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
+import { ProductIcon } from './WorldParts.tsx'
+import { WorldScene } from './WorldScene.tsx'
 
 type ShopValues = { shopName: string; theme: ThemeId; offering: string }
 
@@ -58,6 +60,14 @@ export function CreateScreen({
   const [leaving, setLeaving] = useState<'home' | 'back' | null>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
+
+  // The world is rebuilt from the words on screen, so it updates as you type.
+  const blueprint = useMemo(
+    () => generateWorldBlueprint({ idea: progress.idea, offering, style: theme }),
+    [progress.idea, offering, theme],
+  )
+  // Changing a shop that is already saved, rather than making a new one.
+  const editingSaved = progress.step === 'ready' && !unsavedDraft
 
   const fieldsChanged =
     editing &&
@@ -119,7 +129,11 @@ export function CreateScreen({
         <h1 className="card__title" ref={headingRef} tabIndex={-1}>
           {shopName} is ready to open
         </h1>
-        <ShopPreview theme={theme} name={shopName} />
+        <WorldScene blueprint={blueprint} sign={shopName} />
+        <p className="world-label">
+          <ProductIcon icon={blueprint.productIcon} />
+          {blueprint.label}
+        </p>
         <dl className="summary">
           <div>
             <dt>The idea</dt>
@@ -127,7 +141,7 @@ export function CreateScreen({
           </div>
           {offering && (
             <div>
-              <dt>First on the shelf</dt>
+              <dt>{offeringLabel(blueprint.kind)}</dt>
               <dd>{offering}</dd>
             </div>
           )}
@@ -166,17 +180,21 @@ export function CreateScreen({
       />
       <p className="card__step">
         <SparkIcon />
-        Create
+        {editingSaved ? 'Edit' : 'Create'}
       </p>
       <h1 className="card__title" ref={headingRef} tabIndex={-1}>
-        Shape your shop
+        {editingSaved ? 'Edit your world' : 'Shape your world'}
       </h1>
       <p className="card__idea">
         <span>Your idea</span>
         {progress.idea}
       </p>
 
-      <ShopPreview theme={theme} name={shopName} />
+      <WorldScene blueprint={blueprint} sign={shopName} />
+      <p className="world-label" role="status">
+        <ProductIcon icon={blueprint.productIcon} />
+        {blueprint.label}
+      </p>
 
       <div className="field">
         <label htmlFor="shop-name">Shop name</label>
@@ -218,7 +236,7 @@ export function CreateScreen({
               />
               <span
                 className="theme-option__swatch"
-                style={{ background: option.roof }}
+                style={{ background: option.swatch }}
               />
               <span>{option.label}</span>
             </label>
@@ -236,8 +254,12 @@ export function CreateScreen({
           maxLength={50}
           placeholder="Cloud cupcakes, dragon naps, dog walks…"
           value={offering}
+          aria-describedby="first-offering-help"
           onChange={(event) => setOffering(event.target.value)}
         />
+        <p id="first-offering-help" className="field__help">
+          Your idea, this and your style shape the world above.
+        </p>
       </div>
 
       {replacesShop && (
@@ -255,7 +277,9 @@ export function CreateScreen({
         >
           Back
         </button>
-        <TactileButton type="submit">Save my shop</TactileButton>
+        <TactileButton type="submit">
+          {editingSaved ? 'Save changes' : 'Create my world'}
+        </TactileButton>
       </div>
 
       <ConfirmDialog

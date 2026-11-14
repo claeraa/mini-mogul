@@ -1,14 +1,20 @@
 import { motion } from 'motion/react'
 import { useEffect, useRef } from 'react'
+import type { ReactNode } from 'react'
 import type { BusinessModel, DayResult } from '../game/model.ts'
 import { formatMoney, formatSigned } from '../game/money.ts'
-import { eventById, inventoryValue, takeaway } from '../game/simulation.ts'
+import { summarizeDay } from '../game/report.ts'
+import type { ReportLine } from '../game/report.ts'
+import { eventById, takeaway } from '../game/simulation.ts'
+import type { ProductIconId } from '../world/blueprint.ts'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
+import { ProductIcon } from './WorldParts.tsx'
 
 type DayReportProps = {
   model: BusinessModel
   result: DayResult
   shopName: string
+  icon: ProductIconId
   onNextDay: () => void
   onExit: () => void
 }
@@ -16,31 +22,88 @@ type DayReportProps = {
 const plural = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`
 
-function LedgerRow({
-  label,
-  detail,
-  cents,
+const SHELF_ICONS = 24
+
+function Lines({
+  heading,
+  lines,
+  sign,
+  totalLabel,
+  totalCents,
 }: {
-  label: string
-  detail: string
-  cents: number
+  heading: string
+  lines: ReportLine[]
+  sign: 1 | -1
+  totalLabel: string
+  totalCents: number
 }) {
   return (
-    <div className="ledger__row">
-      <dt>
-        {label}
-        <span>{detail}</span>
-      </dt>
-      <dd>{formatSigned(cents)}</dd>
-    </div>
+    <>
+      <h3 className="book__group">{heading}</h3>
+      <dl className="book__lines">
+        {lines.map((line) => (
+          <div className="book__line" key={line.id}>
+            <dt>
+              {line.label}
+              <span>{line.detail}</span>
+            </dt>
+            <dd>{formatMoney(line.cents)}</dd>
+          </div>
+        ))}
+        <div className="book__line book__line--sum">
+          <dt>{totalLabel}</dt>
+          <dd>{sign < 0 && totalCents > 0 ? '-' : ''}{formatMoney(totalCents)}</dd>
+        </div>
+      </dl>
+    </>
   )
 }
 
-/** The end-of-day story: what happened, then money in, money out, profit. */
+function Book({
+  kind,
+  badge,
+  title,
+  sub,
+  children,
+  delay,
+}: {
+  kind: 'profit' | 'cash' | 'shelf'
+  badge: ReactNode
+  title: string
+  sub: string
+  children: ReactNode
+  delay: number
+}) {
+  return (
+    <motion.section
+      className={`book book--${kind}`}
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.3, ease: 'easeOut' }}
+    >
+      <div className="book__head">
+        <span className="book__badge" aria-hidden="true">
+          {badge}
+        </span>
+        <div>
+          <h2 className="book__title">{title}</h2>
+          <p className="book__sub">{sub}</p>
+        </div>
+      </div>
+      {children}
+    </motion.section>
+  )
+}
+
+/**
+ * The end-of-day story. Profit, cash and the shelf each get their own
+ * "book", then a short note explains why profit and cash can differ.
+ */
 export function DayReport({
   model,
   result: r,
   shopName,
+  icon,
   onNextDay,
   onExit,
 }: DayReportProps) {
@@ -50,9 +113,13 @@ export function DayReport({
   }, [])
 
   const event = eventById(r.eventId)
-  const profit = r.operatingProfitCents
-  const cashChange = r.cashEndCents - r.cashStartCents
+  const s = summarizeDay(model, r)
+  const profit = s.profitCents
+  const cashChange = s.cashChangeCents
+  const shelfGrew = s.inventoryChangeCents > 0
+  const shelfShrank = s.inventoryChangeCents < 0
   const shownCustomers = Math.min(r.demand, 40)
+  const shelfIcons = Math.min(r.endInventory, SHELF_ICONS)
 
   return (
     <section className="card card--play">
@@ -100,72 +167,202 @@ export function DayReport({
         )}
       </div>
 
-      <dl className="ledger">
-        <LedgerRow
-          label="Money in (revenue)"
-          detail={`${r.sold} sold × ${formatMoney(r.priceCents)}`}
-          cents={r.revenueCents}
-        />
-        <LedgerRow
-          label="Cost of the items you sold"
-          detail={`${r.sold} × ${formatMoney(model.unitCostCents)} to make`}
-          cents={-r.costOfSalesCents}
-        />
-        {r.marketingCents > 0 && (
-          <LedgerRow label="Flyers" detail="Handed out this morning" cents={-r.marketingCents} />
-        )}
-        {r.spoilageCents > 0 && (
-          <LedgerRow
-            label="Lost items"
-            detail={`${r.stockLost} × ${formatMoney(model.unitCostCents)}`}
-            cents={-r.spoilageCents}
-          />
-        )}
-        {r.eventCashCents !== 0 && (
-          <LedgerRow
-            label="Surprise"
-            detail={event?.title ?? ''}
-            cents={r.eventCashCents}
-          />
-        )}
-        <motion.div
-          className={
-            profit < 0 ? 'ledger__row ledger__total ledger__total--loss' : 'ledger__row ledger__total'
-          }
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5, duration: 0.3 }}
+      <div className="books">
+        <Book
+          kind="profit"
+          badge={<SparkIcon />}
+          title={profit < 0 ? 'Loss today' : 'Profit today'}
+          sub="What you earned from the items you sold"
+          delay={0.2}
         >
-          <dt>
-            {profit < 0 ? 'Loss today' : 'Profit today'}
-            <span>Money in, take away the costs</span>
-          </dt>
-          <dd>{formatSigned(profit)}</dd>
-        </motion.div>
-      </dl>
+          <Lines
+            heading="Revenue"
+            lines={s.revenue}
+            sign={1}
+            totalLabel="Total revenue"
+            totalCents={s.revenueTotalCents}
+          />
+          <Lines
+            heading="Expenses"
+            lines={s.expenses}
+            sign={-1}
+            totalLabel="Total expenses"
+            totalCents={s.expensesTotalCents}
+          />
+          <p className={profit < 0 ? 'book__total book__total--down' : 'book__total'}>
+            <span>{profit < 0 ? 'Loss today' : 'Profit today'}</span>
+            <strong>{formatSigned(profit)}</strong>
+          </p>
+          <p className="book__foot">Revenue take away expenses.</p>
+        </Book>
 
-      <div className="aftermath">
-        <p>
-          <strong>
-            Cash: {formatMoney(r.cashStartCents)} → {formatMoney(r.cashEndCents)}
-          </strong>{' '}
-          ({formatSigned(cashChange)})
-        </p>
-        <p>
-          {r.produced > 0
-            ? `You spent ${formatMoney(r.productionSpendCents)} making ${plural(r.produced, 'item', 'items')} today. `
-            : 'You made nothing new today. '}
-          {r.endInventory > 0
-            ? `${plural(r.endInventory, 'is', 'are')} still on your shelf for tomorrow, worth ${formatMoney(inventoryValue(model, r.endInventory))}.`
-            : 'Your shelf is empty.'}
-        </p>
-        {cashChange !== profit && (
-          <p className="field__help">
-            Profit only counts the items you sold. Money spent on items still on
-            the shelf comes back when they sell.
+        <Book
+          kind="cash"
+          badge={<span className="coin" />}
+          title="Cash change today"
+          sub="Money that moved in or out of your till"
+          delay={0.35}
+        >
+          <Lines
+            heading="Money in"
+            lines={s.cashIn}
+            sign={1}
+            totalLabel="Total in"
+            totalCents={s.cashInTotalCents}
+          />
+          <Lines
+            heading="Money out"
+            lines={s.cashOut}
+            sign={-1}
+            totalLabel="Total out"
+            totalCents={s.cashOutTotalCents}
+          />
+          <p className={cashChange < 0 ? 'book__total book__total--down' : 'book__total'}>
+            <span>{cashChange < 0 ? 'Cash went down' : cashChange > 0 ? 'Cash went up' : 'Cash stayed the same'}</span>
+            <strong>{formatSigned(cashChange)}</strong>
+          </p>
+          <p className="book__foot">
+            Your till: {formatMoney(r.cashStartCents)} → {formatMoney(r.cashEndCents)}
+          </p>
+        </Book>
+
+        <Book
+          kind="shelf"
+          badge={<ProductIcon icon={icon} />}
+          title="Inventory carried into tomorrow"
+          sub="Items still on your shelf, counted at what they cost to make"
+          delay={0.5}
+        >
+          <div className="shelf-flow">
+            <span className="shelf-flow__step">
+              <strong>{r.startInventory}</strong>
+              <span>this morning</span>
+            </span>
+            <span className="shelf-flow__op" aria-label="plus">+</span>
+            <span className="shelf-flow__step">
+              <strong>{r.produced}</strong>
+              <span>made</span>
+            </span>
+            {r.stockLost > 0 && (
+              <>
+                <span className="shelf-flow__op" aria-label="minus">−</span>
+                <span className="shelf-flow__step">
+                  <strong>{r.stockLost}</strong>
+                  <span>lost</span>
+                </span>
+              </>
+            )}
+            <span className="shelf-flow__op" aria-label="minus">−</span>
+            <span className="shelf-flow__step">
+              <strong>{r.sold}</strong>
+              <span>sold</span>
+            </span>
+            <span className="shelf-flow__op" aria-label="equals">=</span>
+            <span className="shelf-flow__step shelf-flow__step--result">
+              <strong>{r.endInventory}</strong>
+              <span>for tomorrow</span>
+            </span>
+          </div>
+          {r.endInventory > 0 ? (
+            <>
+              <div className="shelf-icons" aria-hidden="true">
+                {Array.from({ length: shelfIcons }, (_, i) => (
+                  <ProductIcon key={i} icon={icon} />
+                ))}
+                {r.endInventory > shelfIcons && (
+                  <span className="shelf__more">+{r.endInventory - shelfIcons}</span>
+                )}
+              </div>
+              <p>
+                <strong>
+                  {plural(r.endInventory, 'item', 'items')} worth{' '}
+                  {formatMoney(s.inventoryEndValueCents)}
+                </strong>{' '}
+                ({formatMoney(model.unitCostCents)} each). They are ready to
+                sell tomorrow without spending more.
+              </p>
+            </>
+          ) : (
+            <p>
+              <strong>Your shelf is empty.</strong> Tomorrow you start with
+              nothing to sell until you make more.
+            </p>
+          )}
+        </Book>
+      </div>
+
+      <motion.div
+        className="bridge"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.65, duration: 0.3 }}
+      >
+        <h2 className="bridge__title">
+          {shelfGrew || shelfShrank
+            ? 'Why profit and cash are different today'
+            : 'Profit and cash match today'}
+        </h2>
+        <div className="bridge__sum">
+          <span className="bridge__chip bridge__chip--profit">
+            <span>{profit < 0 ? 'Loss' : 'Profit'}</span>
+            <strong>{formatSigned(profit)}</strong>
+          </span>
+          {(shelfGrew || shelfShrank) && (
+            <>
+              <span className="shelf-flow__op" aria-label={shelfGrew ? 'minus' : 'plus'}>
+                {shelfGrew ? '−' : '+'}
+              </span>
+              <span className="bridge__chip bridge__chip--shelf">
+                <span>{shelfGrew ? 'Added to the shelf' : 'Taken from the shelf'}</span>
+                <strong>{formatMoney(Math.abs(s.inventoryChangeCents))}</strong>
+              </span>
+            </>
+          )}
+          <span className="shelf-flow__op" aria-label="equals">=</span>
+          <span className="bridge__chip bridge__chip--cash">
+            <span>Cash change</span>
+            <strong>{formatSigned(cashChange)}</strong>
+          </span>
+        </div>
+        {shelfGrew && (
+          <ul>
+            <li>
+              <strong>Cash went down</strong> by{' '}
+              {formatMoney(s.inventoryChangeCents)} for{' '}
+              {plural(s.inventoryChangeItems, 'item', 'items')} you made but
+              did not sell.
+            </li>
+            <li>
+              <strong>That money is not lost.</strong> It is sitting on your
+              shelf as inventory worth {formatMoney(s.inventoryEndValueCents)}.
+            </li>
+            <li>
+              <strong>Profit does not count it yet.</strong> An item only
+              becomes an expense on the day it sells.
+            </li>
+          </ul>
+        )}
+        {shelfShrank && (
+          <ul>
+            <li>
+              Your shelf has {plural(-s.inventoryChangeItems, 'item', 'items')}{' '}
+              fewer than this morning. You paid for those on an earlier day,
+              so <strong>no cash left your till for them today</strong>.
+            </li>
+            <li>
+              <strong>Profit still counts their cost</strong> (
+              {formatMoney(-s.inventoryChangeCents)}), because today is the
+              day they left the shelf.
+            </li>
+          </ul>
+        )}
+        {!shelfGrew && !shelfShrank && (
+          <p>
+            Your shelf is worth the same as this morning, so everything you
+            paid for today also counted as an expense today.
           </p>
         )}
-      </div>
+      </motion.div>
 
       <p className="tip">
         <SparkIcon />

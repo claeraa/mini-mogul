@@ -1,15 +1,12 @@
+import { STYLE_PALETTES } from '../world/blueprint.ts'
 import type { ThemeId } from './storage.ts'
 
-export const THEMES: {
-  id: ThemeId
-  label: string
-  roof: string
-  trim: string
-}[] = [
-  { id: 'cottage', label: 'Cozy cottage', roof: '#f0705f', trim: '#ffd978' },
-  { id: 'forest', label: 'Enchanted forest', roof: '#3fa56b', trim: '#d6f58c' },
-  { id: 'seaside', label: 'Seaside', roof: '#2aa9c4', trim: '#ffe9c2' },
-  { id: 'starlight', label: 'Starlight', roof: '#7667d8', trim: '#ffd978' },
+/** The shop styles the player can pick; colours come from the blueprint. */
+export const THEMES: { id: ThemeId; label: string; swatch: string }[] = [
+  { id: 'cottage', label: 'Cozy cottage', swatch: STYLE_PALETTES.cottage.roof },
+  { id: 'forest', label: 'Enchanted forest', swatch: STYLE_PALETTES.forest.roof },
+  { id: 'seaside', label: 'Seaside', swatch: STYLE_PALETTES.seaside.roof },
+  { id: 'starlight', label: 'Starlight', swatch: STYLE_PALETTES.starlight.roof },
 ]
 
 /** Wording for the leave-without-saving dialog. */
