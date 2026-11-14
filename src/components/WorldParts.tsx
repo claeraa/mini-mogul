@@ -5,6 +5,7 @@ import type {
   StructureType,
   WorldColors,
 } from '../world/blueprint.ts'
+import { mix, shade } from '../world/color.ts'
 
 /**
  * Original SVG artwork for the themed worlds: product glyphs, buildings and
@@ -158,22 +159,58 @@ function Emblem({
 type StructureProps = { colors: WorldColors; icon: ProductIconId }
 
 function Cottage({ colors: c, icon }: StructureProps) {
+  const roofDark = shade(c.roof, 0.18)
+  const roofLight = mix(c.roof, '#ffffff', 0.28)
+  const wallLight = mix(c.wall, '#ffffff', 0.5)
+  const stone = shade(c.wallShade, 0.14)
   return (
     <>
+      {/* chimney */}
       <rect x="32" y="-116" width="14" height="34" rx="3" fill={c.wallShade} />
+      <path d="M32 -104h14M32 -94h14M39 -116v12M36 -104v10M42 -104v10" stroke={stone} strokeWidth="1" />
       <rect x="29" y="-120" width="20" height="7" rx="3" fill={c.roof} />
+      {/* walls: lit side, shaded side, and the roof's shadow across the top */}
       <rect x="-56" y="-74" width="112" height="74" rx="8" fill={c.wall} />
+      <path d="M-56 -66a8 8 0 0 1 8-8h14v74h-14a8 8 0 0 1-8-8z" fill={wallLight} opacity="0.7" />
       <path d="M30 -74h18a8 8 0 0 1 8 8v58a8 8 0 0 1-8 8H30z" fill={c.wallShade} />
+      <path d="M-56 -66a8 8 0 0 1 8-8h96a8 8 0 0 1 8 8v8H-56z" fill={c.wallShade} opacity="0.75" />
+      <path d="M-56 -9h112v1a8 8 0 0 1-8 8h-96a8 8 0 0 1-8-8z" fill={stone} />
+      <path d="M-40 -9v9M-20 -9v9M0 -9v9M20 -9v9M40 -9v9" stroke={c.wallShade} strokeWidth="1.200" />
+      {/* roof with shingles */}
       <path d="M-66 -70L0 -120l66 50z" fill={c.roof} stroke={c.roof} strokeWidth="10" strokeLinejoin="round" />
-      <path d="M-40 -84L0 -114l40 30" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.35" />
+      <path d="M0 -122l68 52-4 6H12z" fill={roofDark} opacity="0.55" />
+      <g fill="none" stroke={roofDark} strokeWidth="1.600" strokeLinecap="round">
+        <path d="M-52 -76q5 5 10 0t10 0 10 0 10 0 10 0 10 0 10 0 10 0 10 0 10 0" />
+        <path d="M-37 -88q5 5 10 0t10 0 10 0 10 0 10 0 10 0 10 0 10 0" />
+        <path d="M-22 -100q5 5 10 0t10 0 10 0 10 0 10 0" />
+      </g>
+      <path d="M-46 -80L-2 -114" fill="none" stroke={roofLight} strokeWidth="4" strokeLinecap="round" />
       <Emblem icon={icon} x={0} y={-90} r={13} colors={c} />
+      {/* window, awning and a flower box */}
       <rect x="-46" y="-44" width="44" height="28" rx="5" fill={GLASS} stroke={c.trim} strokeWidth="3" />
-      <path d="M-24 -44v28M-46 -30h44" stroke="#fff" strokeWidth="2" opacity="0.8" />
+      <path d="M-43 -22l14-19h7l-14 19z" fill="#fff" opacity="0.55" />
+      <path d="M-24 -44v28M-46 -30h44" stroke="#fff" strokeWidth="2" opacity="0.85" />
       <path d="M-50 -58h52v9a6.500 6.500 0 0 1-13 0 6.500 6.500 0 0 1-13 0 6.500 6.500 0 0 1-13 0 6.500 6.500 0 0 1-13 0z" fill="#fff" />
       <path d="M-37 -58h13v9a6.500 6.500 0 0 1-13 0zM-11 -58h13v9a6.500 6.500 0 0 1-13 0z" fill={c.accent} />
-      <rect x="-48" y="-16" width="48" height="6" rx="3" fill={c.accent} />
-      <path d="M14 0v-34a13 13 0 0 1 26 0V0z" fill={c.roof} />
-      <circle cx="33" cy="-20" r="2.500" fill={c.trim} />
+      <path d="M-50 -58h52v3h-52z" fill={shade(c.accent, 0.2)} opacity="0.5" />
+      <rect x="-49" y="-17" width="50" height="9" rx="3" fill={shade(c.accent, 0.12)} />
+      <rect x="-49" y="-17" width="50" height="3.500" rx="1.700" fill={c.accent} />
+      <g>
+        <circle cx="-40" cy="-20" r="3.200" fill="#fff" />
+        <circle cx="-30" cy="-21" r="3.200" fill={c.trim} />
+        <circle cx="-19" cy="-20" r="3.200" fill="#fff" />
+        <circle cx="-9" cy="-21" r="3.200" fill={c.trim} />
+        <circle cx="-35" cy="-18" r="2.600" fill={c.foliage} />
+        <circle cx="-24" cy="-18" r="2.600" fill={c.foliage} />
+        <circle cx="-14" cy="-18" r="2.600" fill={c.foliage} />
+      </g>
+      {/* door */}
+      <path d="M12 0v-34a15 15 0 0 1 30 0V0z" fill={c.trim} />
+      <path d="M15 0v-34a12 12 0 0 1 24 0V0z" fill={c.roof} />
+      <path d="M15 0v-34a12 12 0 0 1 12-12V0z" fill={roofLight} opacity="0.45" />
+      <path d="M21 -36a6 6 0 0 1 12 0v6H21z" fill={GLASS} opacity="0.9" />
+      <circle cx="34" cy="-18" r="2.500" fill={c.trim} />
+      <rect x="10" y="-3" width="34" height="4" rx="2" fill={stone} />
     </>
   )
 }
@@ -205,44 +242,108 @@ function Stall({ colors: c, icon }: StructureProps) {
 }
 
 function Cave({ colors: c, icon }: StructureProps) {
+  const rockLight = mix(c.wall, '#ffffff', 0.4)
+  const rockDark = shade(c.wallShade, 0.16)
+  const archStone = mix(c.wallShade, c.wall, 0.35)
+  const moss = mix(c.foliage, '#7fd6b0', 0.4)
+  const crest = shade(c.roof, 0.16)
   return (
     <>
+      {/* the crest along the top */}
       <path d="M-34 -84l7-20 9 16zM-6 -98l8-22 8 21zM24 -92l10-18 6 22z" fill={c.roof} />
+      <path d="M-27 -104l9 16-5 2zM2 -120l8 21-5 1zM34 -110l6 22-5-1z" fill={crest} />
+      {/* the rock: lit from the left, shaded on the right, heavier at the base */}
       <path d="M-72 0C-78 -52-52 -98-8 -102 38 -106 76 -64 72 0z" fill={c.wall} />
+      <path d="M-64 -30C-62 -66-40 -90-10 -96-34 -84-50 -62-54 -30z" fill={rockLight} opacity="0.75" />
       <path d="M40 -88C66 -70 74 -36 72 0H44c6-30 4-62-4-88z" fill={c.wallShade} />
-      <circle cx="-48" cy="-44" r="6" fill={c.wallShade} />
-      <circle cx="-36" cy="-70" r="4" fill={c.wallShade} />
-      <circle cx="50" cy="-26" r="5" fill={c.wall} opacity="0.6" />
-      <path d="M-27 0v-30a27 30 0 0 1 54 0V0z" fill="#3e2f6e" />
-      <ellipse cx="0" cy="-5" rx="17" ry="5" fill={c.accent} opacity="0.55" />
+      <path d="M-73 -14C-50 -8 50 -8 73 -14L72 0H-72z" fill={rockDark} opacity="0.55" />
+      <g fill="none" stroke={rockDark} strokeWidth="1.300" strokeLinecap="round" opacity="0.7">
+        <path d="M-58 -52q8-4 14 2M-50 -22q6-3 12 1M46 -56q7-3 12 3M52 -30q6-2 10 2M-20 -86q8-3 14 1" />
+      </g>
+      <circle cx="-50" cy="-66" r="3" fill={c.wallShade} opacity="0.7" />
+      <circle cx="56" cy="-44" r="4" fill={c.wall} opacity="0.5" />
+      {/* moss creeping over the top */}
+      <path d="M-44 -84c10-11 28-17 44-16 14 1 28 7 36 16-8-2-12 2-18-2-6 4-12 0-18 3-6-4-12 1-18-2-6 3-12-1-18 2-3 1-6 0-8-1z" fill={moss} />
+      <circle cx="-22" cy="-94" r="1.800" fill="#fff" />
+      <circle cx="16" cy="-96" r="1.800" fill={c.trim} />
+      <path d="M-30 -84v6M-6 -86v8M22 -84v5" stroke={moss} strokeWidth="2.200" strokeLinecap="round" />
+      {/* a round window with warm light */}
+      <circle cx="-47" cy="-38" r="10" fill={archStone} />
+      <circle className="w-glow" cx="-47" cy="-38" r="7" fill="#ffe9a8" />
+      <path d="M-47 -45v14M-54 -38h14" stroke={archStone} strokeWidth="1.800" />
+      <path d="M-56 -30q9 5 18 0" fill="none" stroke={rockDark} strokeWidth="2.200" strokeLinecap="round" />
+      {/* the doorway: stone arch, warm glow inside, a little door standing open */}
+      <path d="M-34 0v-31a34 36 0 0 1 68 0V0z" fill={archStone} />
+      <g stroke={rockDark} strokeWidth="1.200" opacity="0.8">
+        <path d="M-34 -14h8M-34 -30h8M-29 -47l6 4M-16 -60l4 6M0 -67v8M16 -60l-4 6M29 -47l-6 4M34 -30h-8M34 -14h-8" />
+      </g>
+      <path d="M-26 0v-30a26 29 0 0 1 52 0V0z" fill="#3e2f6e" />
+      <ellipse cx="0" cy="-16" rx="22" ry="20" fill="#ff9f5a" opacity="0.22" />
+      <ellipse className="w-glow" cx="0" cy="-10" rx="16" ry="12" fill="#ffd978" opacity="0.32" />
+      <path d="M-26 0v-30a26 29 0 0 1 8-19V0z" fill="#b07a45" />
+      <path d="M-22 -40V0M-26 -22h8M-26 -8h8" stroke="#7a4f2e" strokeWidth="1.200" />
+      <circle cx="-20.500" cy="-18" r="1.300" fill={c.trim} />
+      <ellipse cx="0" cy="-5" rx="17" ry="5" fill={c.accent} opacity="0.4" />
       <g className="w-blink">
         <ellipse cx="-8" cy="-30" rx="3.500" ry="4.500" fill={c.trim} />
         <ellipse cx="8" cy="-30" rx="3.500" ry="4.500" fill={c.trim} />
         <circle cx="-8" cy="-29" r="1.500" fill="#3e2f6e" />
         <circle cx="8" cy="-29" r="1.500" fill="#3e2f6e" />
       </g>
-      <Emblem icon={icon} x={0} y={-76} r={12} colors={c} />
+      <rect x="-36" y="-3" width="72" height="5" rx="2.500" fill={rockDark} />
+      <Emblem icon={icon} x={0} y={-78} r={12} colors={c} />
     </>
   )
 }
 
 function Pavilion({ colors: c, icon }: StructureProps) {
+  const roofDark = shade(c.roof, 0.18)
+  const roofLight = mix(c.roof, '#ffffff', 0.3)
+  const wallLight = mix(c.wall, '#ffffff', 0.5)
+  const stone = shade(c.wallShade, 0.14)
+  const doorLight = mix(c.accent, '#ffffff', 0.35)
   return (
     <>
+      {/* walls */}
       <rect x="-62" y="-60" width="124" height="60" rx="8" fill={c.wall} />
+      <path d="M-62 -52a8 8 0 0 1 8-8h12v60h-12a8 8 0 0 1-8-8z" fill={wallLight} opacity="0.7" />
       <path d="M38 -60h16a8 8 0 0 1 8 8v44a8 8 0 0 1-8 8H38z" fill={c.wallShade} />
+      <path d="M-62 -56h124v8H-62z" fill={c.wallShade} opacity="0.75" />
+      <path d="M-62 -9h124v1a8 8 0 0 1-8 8h-108a8 8 0 0 1-8-8z" fill={stone} />
+      {/* roof */}
       <rect x="-72" y="-76" width="144" height="20" rx="10" fill={c.roof} />
+      <path d="M-72 -66a10 10 0 0 0 10 10h124a10 10 0 0 0 10-10z" fill={roofDark} opacity="0.5" />
+      <rect x="-64" y="-73" width="96" height="4" rx="2" fill={roofLight} opacity="0.8" />
       <rect x="-72" y="-62" width="144" height="6" rx="3" fill={c.trim} />
+      <path d="M-56 -62v6M-40 -62v6M-24 -62v6M24 -62v6M40 -62v6M56 -62v6" stroke={shade(c.trim, 0.2)} strokeWidth="1.200" />
+      {/* flag */}
       <path d="M-52 -76v-22" stroke={WOOD_DARK} strokeWidth="3" strokeLinecap="round" />
       <path className="w-sway" d="M-52 -98l18 5-18 6z" fill={c.accent} />
       <Emblem icon={icon} x={0} y={-84} r={17} colors={c} />
-      <rect x="-54" y="-44" width="30" height="24" rx="6" fill={GLASS} stroke={c.trim} strokeWidth="3" />
-      <rect x="24" y="-44" width="30" height="24" rx="6" fill={GLASS} stroke={c.trim} strokeWidth="3" />
-      <path d="M-39 -44v24M39 -44v24" stroke="#fff" strokeWidth="2" opacity="0.8" />
+      {/* windows with sills and planters */}
+      {[-54, 24].map((x) => (
+        <g key={x}>
+          <rect x={x} y="-44" width="30" height="24" rx="6" fill={GLASS} stroke={c.trim} strokeWidth="3" />
+          <path d={`M${x + 3} -24l10-17h6l-10 17z`} fill="#fff" opacity="0.55" />
+          <path d={`M${x + 15} -44v24`} stroke="#fff" strokeWidth="2" opacity="0.85" />
+          <rect x={x - 2} y="-21" width="34" height="5" rx="2.500" fill={c.trim} />
+          <rect x={x} y="-12" width="30" height="8" rx="3" fill={shade(c.accent, 0.15)} />
+          <circle cx={x + 6} cy="-13" r="5" fill={c.foliage} />
+          <circle cx={x + 15} cy="-15" r="6" fill={c.foliageShade} />
+          <circle cx={x + 24} cy="-13" r="5" fill={c.foliage} />
+          <circle cx={x + 10} cy="-17" r="1.800" fill="#fff" />
+          <circle cx={x + 21} cy="-16" r="1.800" fill={c.trim} />
+        </g>
+      ))}
+      {/* double door under a little striped awning */}
+      <path d="M-17 0v-30a17 17 0 0 1 34 0V0z" fill={c.trim} />
       <path d="M-14 0v-30a14 14 0 0 1 28 0V0z" fill={c.accent} />
-      <path d="M0 -42V0" stroke="#fff" strokeWidth="2" opacity="0.6" />
-      <circle cx="-4" cy="-18" r="2" fill="#fff" />
-      <circle cx="4" cy="-18" r="2" fill="#fff" />
+      <path d="M-14 0v-30a14 14 0 0 1 14-14V0z" fill={doorLight} opacity="0.6" />
+      <path d="M0 -44V0" stroke={shade(c.accent, 0.25)} strokeWidth="1.600" />
+      <path d="M-10 -30a5 5 0 0 1 8 0v8h-8zM2 -30a5 5 0 0 1 8 0v8H2z" fill={GLASS} opacity="0.9" />
+      <circle cx="-3.500" cy="-14" r="1.800" fill="#fff" />
+      <circle cx="3.500" cy="-14" r="1.800" fill="#fff" />
+      <rect x="-19" y="-3" width="38" height="4" rx="2" fill={stone} />
     </>
   )
 }

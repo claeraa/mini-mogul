@@ -10,6 +10,8 @@
  * new art, a structure or prop in components/WorldParts.tsx).
  */
 
+import { mix, shade } from './color.ts'
+
 export type StyleId = 'cottage' | 'forest' | 'seaside' | 'starlight'
 
 export type WorldThemeId =
@@ -88,6 +90,11 @@ export type WorldColors = {
   roof: string
   trim: string
   accent: string
+  /** Leaves and bushes, tinted towards the world's own colours. */
+  foliage: string
+  foliageShade: string
+  /** A deep version of the building's colour, for frames and lettering. */
+  ink: string
 }
 
 export type WorldBlueprint = {
@@ -492,6 +499,13 @@ export function assembleBlueprint(
       !(id === 'smoke' && choice.structure !== 'cottage'),
   )
 
+  // One colour family per world: the land, the leaves and the horizon lean
+  // towards the building's own colours, and every shadow is a deeper version
+  // of the colour it falls on.
+  const land = BIOME_COLORS[biome]
+  const ground = mix(land.ground, choice.wall, 0.2)
+  const foliage = mix(mix(land.groundShade, '#3f9f5a', 0.45), choice.accent, 0.16)
+
   return {
     theme: choice.theme,
     label: choice.label,
@@ -504,14 +518,20 @@ export function assembleBlueprint(
     productIcon: pickIcon(tokenize(input.offering ?? ''), choice.productIcon),
     colors: {
       skyTop,
-      skyBottom,
+      skyBottom: night ? skyBottom : mix(skyBottom, choice.wall, 0.3),
       glow: night ? '#fdf6d8' : '#fff0a3',
-      ...BIOME_COLORS[biome],
+      hillFar: mix(land.hillFar, choice.accent, 0.22),
+      hillNear: mix(land.hillNear, choice.wall, 0.18),
+      ground,
+      groundShade: shade(ground, 0.16),
       wall: choice.wall,
       wallShade: choice.wallShade,
       roof: style.roof,
       trim: style.trim,
       accent: choice.accent,
+      foliage,
+      foliageShade: shade(foliage, 0.2),
+      ink: shade(choice.wallShade, 0.5),
     },
     reactions: [...choice.reactions],
   }

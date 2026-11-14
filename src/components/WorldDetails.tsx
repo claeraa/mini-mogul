@@ -5,6 +5,7 @@ import type {
   WorldColors,
   WorldThemeId,
 } from '../world/blueprint.ts'
+import { NurseryDetails, NurseryGround } from './DragonNursery.tsx'
 import { Glyph } from './WorldParts.tsx'
 
 /**
@@ -128,11 +129,11 @@ export function Foreground({ biome, c }: { biome: BiomeId; c: WorldColors }) {
       return (
         <>
           <Stones c={c} />
-          <Bush x={6} y={214} s={1.200} fill={LEAF} berries={c.accent} />
-          <Bush x={316} y={214} s={1.100} fill={LEAF_DARK} />
-          <Tuft x={34} y={208} fill={LEAF_DARK} />
-          <Tuft x={92} y={206} fill={LEAF} s={0.800} />
-          <Tuft x={228} y={207} fill={LEAF_DARK} s={0.900} />
+          <Bush x={6} y={214} s={1.200} fill={c.foliage} berries={c.accent} />
+          <Bush x={316} y={214} s={1.100} fill={c.foliageShade} />
+          <Tuft x={34} y={208} fill={c.foliageShade} />
+          <Tuft x={92} y={206} fill={c.foliage} s={0.800} />
+          <Tuft x={228} y={207} fill={c.foliageShade} s={0.900} />
           <Flower x={46} y={208} fill="#fff" />
           <Flower x={22} y={200} fill={c.accent} s={0.900} />
           <Flower x={284} y={207} fill={c.trim} />
@@ -143,15 +144,15 @@ export function Foreground({ biome, c }: { biome: BiomeId; c: WorldColors }) {
       return (
         <>
           <Stones c={c} />
-          <Bush x={4} y={214} s={1.100} fill={LEAF} />
+          <Bush x={4} y={214} s={1.100} fill={c.foliage} />
           <g transform="translate(96 205)">
             <path d="M-14 0v-9M14 0v-9" stroke={WOOD} strokeWidth="3" strokeLinecap="round" />
             <rect x="-18" y="-12" width="36" height="4" rx="2" fill="#d9a25f" />
             <rect x="-18" y="-21" width="36" height="4" rx="2" fill="#d9a25f" />
             <path d="M-15 -9v-11M15 -9v-11" stroke={WOOD} strokeWidth="2.500" strokeLinecap="round" />
           </g>
-          <Tuft x={36} y={208} fill={LEAF_DARK} />
-          <Tuft x={226} y={207} fill={LEAF_DARK} s={0.900} />
+          <Tuft x={36} y={208} fill={c.foliageShade} />
+          <Tuft x={226} y={207} fill={c.foliageShade} s={0.900} />
           <Flower x={52} y={208} fill={c.accent} />
           <Flower x={236} y={208} fill="#fff" s={0.900} />
           <Flower x={22} y={201} fill={c.trim} s={0.900} />
@@ -161,15 +162,15 @@ export function Foreground({ biome, c }: { biome: BiomeId; c: WorldColors }) {
       return (
         <>
           <Stones c={c} />
-          <Bush x={6} y={214} s={1.100} fill={LEAF} berries="#fff" />
-          <Bush x={316} y={214} s={1.100} fill={LEAF_DARK} berries={c.accent} />
+          <Bush x={6} y={214} s={1.100} fill={c.foliage} berries="#fff" />
+          <Bush x={316} y={214} s={1.100} fill={c.foliageShade} berries={c.accent} />
           {[78, 90, 102, 114].map((x, i) => (
             <Tulip key={x} x={x} y={207} fill={[c.accent, c.trim, c.roof, '#fff'][i]} />
           ))}
           {[214, 226, 238].map((x, i) => (
             <Tulip key={x} x={x} y={208} fill={[c.trim, c.accent, '#b79cf5'][i]} />
           ))}
-          <Tuft x={40} y={208} fill={LEAF_DARK} />
+          <Tuft x={40} y={208} fill={c.foliageShade} />
           <Flower x={52} y={208} fill="#fff" />
         </>
       )
@@ -177,7 +178,7 @@ export function Foreground({ biome, c }: { biome: BiomeId; c: WorldColors }) {
       return (
         <>
           <Stones c={c} />
-          <g fill="none" stroke={LEAF_DARK} strokeWidth="3" strokeLinecap="round">
+          <g fill="none" stroke={c.foliageShade} strokeWidth="3" strokeLinecap="round">
             <path d="M4 210c2-14 10-22 20-24M10 210c6-10 14-14 24-13M2 210c-1-12 2-20 8-26" />
             <path d="M316 210c-2-14-10-22-20-24M310 210c-6-10-14-14-24-13M318 210c1-12-2-20-8-26" />
           </g>
@@ -185,8 +186,8 @@ export function Foreground({ biome, c }: { biome: BiomeId; c: WorldColors }) {
             <rect x="-20" y="-10" width="40" height="11" rx="5.500" fill="#a77b52" />
             <ellipse cx="-19" cy="-4.500" rx="3.500" ry="5.500" fill="#d9b98c" />
             <ellipse cx="-19" cy="-4.500" rx="1.500" ry="2.500" fill="#a77b52" />
-            <path d="M6 -10c0-5 2-7 5-8" fill="none" stroke={LEAF} strokeWidth="2" strokeLinecap="round" />
-            <circle cx="12" cy="-18" r="2.500" fill={LEAF} />
+            <path d="M6 -10c0-5 2-7 5-8" fill="none" stroke={c.foliage} strokeWidth="2" strokeLinecap="round" />
+            <circle cx="12" cy="-18" r="2.500" fill={c.foliage} />
           </g>
           <g transform="translate(230 206)">
             <rect x="-2" y="-8" width="4" height="9" rx="2" fill="#fff7e0" />
@@ -196,8 +197,8 @@ export function Foreground({ biome, c }: { biome: BiomeId; c: WorldColors }) {
             <rect x="9" y="-5" width="3" height="6" rx="1.500" fill="#fff7e0" />
             <path d="M5.500 -4a5 4.500 0 0 1 10 0z" fill={c.roof} />
           </g>
-          <Tuft x={44} y={208} fill={LEAF_DARK} />
-          <Tuft x={278} y={208} fill={LEAF_DARK} />
+          <Tuft x={44} y={208} fill={c.foliageShade} />
+          <Tuft x={278} y={208} fill={c.foliageShade} />
         </>
       )
     case 'crags':
@@ -206,8 +207,6 @@ export function Foreground({ biome, c }: { biome: BiomeId; c: WorldColors }) {
           <Stones c={c} />
           <Crystal x={18} y={210} s={1.200} fill="#8fe3f2" />
           <Crystal x={300} y={210} s={1.100} fill="#d9a6ff" />
-          <Crystal x={94} y={207} s={0.700} fill="#d9a6ff" />
-          <Crystal x={230} y={208} s={0.650} fill="#8fe3f2" />
           <Tuft x={44} y={208} fill="#8f7cc8" />
           <Tuft x={272} y={208} fill="#8f7cc8" s={0.900} />
           <Flower x={60} y={208} fill={c.accent} s={0.900} />
@@ -242,6 +241,11 @@ export function Foreground({ biome, c }: { biome: BiomeId; c: WorldColors }) {
   }
 }
 
+/** Ground-level touches drawn behind the building, so it stays the focus. */
+export function ThemeGround({ theme, c }: { theme: WorldThemeId; c: WorldColors }) {
+  return theme === 'creature-care' ? <NurseryGround c={c} /> : null
+}
+
 // ---- Touches for each kind of business --------------------------------------------
 
 function Garland({ x0, x1, y, sag, fills }: { x0: number; x1: number; y: number; sag: number; fills: string[] }) {
@@ -268,9 +272,11 @@ function Garland({ x0, x1, y, sag, fills }: { x0: number; x1: number; y: number;
   )
 }
 
-function Footprints({ fill, paw }: { fill: string; paw?: boolean }) {
-  // Beside the path, so they do not sit on the stepping stones.
-  const spots = [[138, 186, -12], [144, 196, 14], [132, 205, -10]]
+// Beside the path, so they do not sit on the stepping stones.
+const TRAIL_LEFT = [[138, 186, -12], [144, 196, 14], [132, 205, -10]]
+const TRAIL_RIGHT = [[176, 190, 12], [184, 199, -10], [176, 207, 14]]
+
+function Footprints({ fill, paw, spots = TRAIL_LEFT }: { fill: string; paw?: boolean; spots?: number[][] }) {
   return (
     <g opacity="0.55">
       {spots.map(([x, y, turn], i) =>
@@ -320,19 +326,8 @@ export function ThemeDetails({
     case 'creature-care':
       return (
         <>
-          <Footprints fill="#8f7cc8" />
-          <g fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {[0, 1, 2].map((i) => (
-              <g key={i} transform={`translate(${190 + i * 9} ${122 - i * 10}) scale(${0.700 + i * 0.250})`}>
-                <path className="w-rise" style={{ animationDelay: `${i * 1.200}s` }} d="M0 0h6l-6 7h6" />
-              </g>
-            ))}
-          </g>
-          <g transform="translate(196 198)">
-            <ellipse cx="0" cy="-2" rx="11" ry="4" fill={c.accent} opacity="0.5" />
-            <path className="w-glow" d="M-3 -2c-3-6 1-9 1-13 3 2 6 6 5 13z" fill="#ffb347" />
-            <path d="M-1 -2c-1-4 1-5 1-8 2 2 3 4 2 8z" fill="#fff3a0" />
-          </g>
+          <Footprints fill="#8f7cc8" spots={TRAIL_RIGHT} />
+          <NurseryDetails c={c} />
         </>
       )
     case 'pet-care':

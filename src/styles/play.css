@@ -252,162 +252,245 @@ button.sign:focus-visible,
   }
 }
 
-/* ---- The management panel -------------------------------------------------- */
+/* ---- Handwritten display type ---------------------------------------------- */
 
-.mgmt {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-  padding: 14px;
-  border-radius: 24px;
-  background: linear-gradient(180deg, #fffaf0 0%, #fff3dc 100%);
-  box-shadow:
-    inset 0 0 0 3px #f0d9b0,
-    0 6px 0 #e3c594;
+.card--game {
+  --font-hand: 'Gochi Hand', var(--font-display);
 }
 
+.card--game .game-head .card__title {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: clamp(1.700rem, 1.800vw + 1rem, 2.300rem);
+  letter-spacing: 0.01em;
+}
+
+/* ---- The plan board: a wooden frame around a sheet of paper ----------------- */
+
+.mgmt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin-top: 16px;
+  padding: 30px 14px 14px;
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, #fffaf0 0%, #fff1d9 100%) padding-box,
+    linear-gradient(180deg, #c98f5a 0%, #a8703f 100%) border-box;
+  border: 6px solid transparent;
+  box-shadow:
+    0 0 0 3px #7a4f2e,
+    0 8px 0 #7a4f2e,
+    0 16px 24px rgba(8, 40, 96, 0.22);
+}
+
+/* the title hangs on a plank across the top of the frame */
 .mgmt__title {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  padding: 0.050em 1.100em 0.150em;
+  border-radius: 14px;
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 1.500rem;
+  white-space: nowrap;
+  color: #fff8e6;
+  background: linear-gradient(180deg, #a8703f, #8a5a48);
+  box-shadow:
+    0 0 0 3px #5f3d42,
+    0 4px 0 #5f3d42;
+  transform: translateX(-50%) rotate(-1.500deg);
+}
+
+/* ---- Toolbar tiles ----------------------------------------------------------- */
+
+.toolbar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 10px 4px 7px;
+  border: 0;
+  border-radius: 18px;
+  color: var(--ink);
+  background: #fff;
+  /* a sticker: white edge, then a coloured line, then a little depth */
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 5px #d9b98c,
+    0 6px 0 3px #d9b98c;
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tile:hover {
+  transform: translateY(-2px);
+}
+
+.tile:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 5px #d9b98c,
+    0 2px 0 3px #d9b98c;
+}
+
+.tile[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--w-accent) 22%, #fff);
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 6px var(--w-accent),
+    0 6px 0 4px color-mix(in srgb, var(--w-accent) 70%, #5f3d42);
+}
+
+.tile__step {
+  position: absolute;
+  top: -8px;
+  left: -6px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.850rem;
+  color: #fff8e6;
+  background: #8a5a48;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.tile__icon {
+  display: grid;
+  place-items: center;
+  height: 40px;
+}
+
+.tile__icon .game-icon,
+.tile__icon .product-icon {
+  width: 38px;
+  height: 38px;
+  transition: transform 0.2s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.tile[aria-pressed='true'] .tile__icon > * {
+  transform: scale(1.15) rotate(-6deg);
+}
+
+.tile__label {
+  font-weight: 800;
+  font-size: 0.900rem;
+  line-height: 1.1;
+}
+
+.tile__value {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 1.250rem;
-  color: #5f3d42;
-}
-
-.mgmt__hint {
-  font-size: 0.850rem;
-  line-height: 1.35;
-  color: #7a5a48;
-  overflow-wrap: anywhere;
-}
-
-.station {
-  border-radius: 18px;
-  background: #fff;
-  box-shadow:
-    inset 0 0 0 2px #ecd9b8,
-    0 3px 0 #e3c594;
-  transition: box-shadow 0.2s ease;
-}
-
-.station[data-open] {
-  box-shadow:
-    inset 0 0 0 2px #e5a93a,
-    0 3px 0 #e58a1f;
-}
-
-.station__head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 54px;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: 18px;
-  text-align: left;
-  background: transparent;
-  transition: transform 0.12s ease;
-}
-
-.station__head:active {
-  transform: translateY(2px);
-}
-
-.station__icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
-  background: #fff1cc;
-}
-
-.station__icon .game-icon,
-.station__icon .product-icon {
-  width: 26px;
-  height: 26px;
-}
-
-.station__text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.2;
-}
-
-.station__title {
-  font-weight: 800;
-}
-
-.station__note {
-  font-size: 0.820rem;
-  color: var(--ink-soft);
-}
-
-.station__value {
-  flex: none;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.300rem;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
   color: var(--deep);
 }
 
-.station__chevron {
-  color: #b07a45;
-  transition: transform 0.25s ease;
+.mgmt__control {
+  padding: 12px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: inset 0 0 0 2px #ecd9b8;
+  animation: control-in 0.22s ease-out;
 }
 
-.station[data-open] .station__chevron {
-  transform: rotate(180deg);
+@keyframes control-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
 }
 
-/* Folds open smoothly without measuring heights. */
-.station__fold {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.28s ease;
-}
-
-.station[data-open] .station__fold {
-  grid-template-rows: 1fr;
-}
-
-.station__body {
-  min-height: 0;
-  overflow: hidden;
-  visibility: hidden;
-  transition: visibility 0.28s;
-}
-
-.station[data-open] .station__body {
-  visibility: visible;
-  padding: 2px 12px 12px;
-}
-
-.station .dial {
+.mgmt__control .dial {
   gap: 4px;
 }
 
-.station .dial__top {
-  display: none;
+.mgmt__control .dial__top label {
+  font-size: 0.950rem;
 }
 
-.station .field__help {
+.mgmt__control .field__help {
   font-size: 0.850rem;
   line-height: 1.35;
 }
 
-.station .play-action .setting-row {
-  padding: 6px 12px;
+.mgmt__control .play-action .setting-row {
+  padding: 2px 0;
+  border: 0;
+}
+
+/* ---- Does the plan fit the customers? ---------------------------------------- */
+
+.match {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 0.920rem;
+  line-height: 1.3;
+  transition: background-color 0.25s ease;
+}
+
+.match__dot {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #fff;
+}
+
+.match--good {
+  color: #0b4f3f;
+  background: #c9f2d6;
+}
+
+.match--good .match__dot {
+  background: #2fae6a;
+}
+
+.match--warn {
+  color: #5a3200;
+  background: #ffe9a8;
+}
+
+.match--warn .match__dot {
+  background: #f2a11f;
+}
+
+.match--stop {
+  color: #7a1f1a;
+  background: #ffd9d4;
+}
+
+.match--stop .match__dot {
+  background: #e0503f;
 }
 
 .mgmt .plan-summary {
-  font-size: 0.920rem;
+  font-size: 0.880rem;
   color: #5f3d42;
+  overflow-wrap: anywhere;
 }
 
 .mgmt__actions {
@@ -415,7 +498,6 @@ button.sign:focus-visible,
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
-  margin-top: 4px;
 }
 
 .mgmt__actions .tactile__face {
@@ -434,11 +516,105 @@ button.sign:focus-visible,
 .mgmt.play-open {
   align-items: center;
   justify-content: center;
+  padding-top: 14px;
 }
 
 .mgmt :focus-visible {
-  outline-color: var(--deep);
-  box-shadow: 0 0 0 5px rgba(255, 210, 90, 0.9);
+  outline: 3px solid var(--deep);
+  outline-offset: 3px;
+}
+
+/* ---- Critters: the customers ------------------------------------------------- */
+
+.street .guest.guest--critter,
+.guest.guest--critter {
+  width: 46px;
+  height: 54px;
+  margin-top: 6px;
+}
+
+.guest.guest--critter .guest__body {
+  border-radius: 0;
+  background: none;
+}
+
+.guest.guest--critter .guest__body::before,
+.guest.guest--critter .guest__body::after {
+  content: none;
+}
+
+.card--game .guests {
+  gap: 2px;
+}
+
+.critter {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.critter__face--happy,
+.critter__face--sad {
+  opacity: 0;
+}
+
+.critter__eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: critter-blink 4.200s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -0.9s);
+}
+
+/* On its turn each critter swaps to its delighted or disappointed face. */
+.guest--turn .critter__face--idle {
+  animation: face-off 0.010s linear forwards;
+  animation-delay: calc(var(--i) * var(--stagger) + 0.120s);
+}
+
+.guest--turn:not(.guest--missed) .critter__face--happy,
+.guest--turn.guest--missed .critter__face--sad {
+  animation: face-on 0.010s linear forwards;
+  animation-delay: calc(var(--i) * var(--stagger) + 0.120s);
+}
+
+@keyframes face-off {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes face-on {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes critter-blink {
+  0%,
+  46%,
+  52%,
+  100% {
+    transform: scaleY(1);
+  }
+  49% {
+    transform: scaleY(0.1);
+  }
+}
+
+.hud-chip .game-icon {
+  width: 1.350em;
+  height: 1.350em;
+}
+
+.card--game .world__street {
+  min-height: 108px;
+}
+
+@media (max-width: 520px) {
+  .guest.guest--critter {
+    zoom: 0.7;
+  }
 }
 
 @media (max-width: 860px) {

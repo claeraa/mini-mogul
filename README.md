@@ -47,4 +47,4 @@ To switch it on, copy `.env.example` to `.env.local`, set `AI_DIRECTOR=on` and `
 - `src/lib/` — saved settings/progress (localStorage), synthesised audio, hooks
 - `src/styles/` — scene and interface styles
 
-All artwork is original CSS/SVG. All sound is synthesised in the browser with the Web Audio API and is off until the player turns it on. Unless the AI Director is switched on there are no API keys, paid services or external requests.
+All artwork is original CSS/SVG. Fonts are Fredoka, Nunito and Gochi Hand (all under the SIL Open Font License, bundled locally). All sound is synthesised in the browser with the Web Audio API and is off until the player turns it on. Unless the AI Director is switched on there are no API keys, paid services or external requests.

@@ -1,5 +1,5 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { PRODUCT_SHOP } from '../game/model.ts'
 import type { DayPlan, DayResult } from '../game/model.ts'
 import { formatMoney, formatSigned } from '../game/money.ts'
@@ -24,9 +24,9 @@ import { DayReport } from './DayReport.tsx'
 import { Dial } from './Dial.tsx'
 import {
   BellIcon,
-  ChevronIcon,
   MegaphoneIcon,
   PeopleIcon,
+  PouchIcon,
   PriceTagIcon,
   SunIcon,
 } from './GameIcons.tsx'
@@ -59,46 +59,31 @@ type Phase = 'plan' | 'open' | 'report'
 /** The three things a player can change before opening. */
 type Control = 'price' | 'make' | 'flyers'
 
-/** One fold-away row of the management panel: a counter that opens its control. */
-function Station({
+/** One tile of the toolbar: an icon, a short label and today's value. */
+function ToolTile({
+  step,
   icon,
-  title,
+  label,
   value,
-  note,
-  open,
-  onToggle,
-  children,
+  active,
+  onClick,
 }: {
+  step: number
   icon: ReactNode
-  title: string
+  label: string
   value: string
-  note: string
-  open: boolean
-  onToggle: () => void
-  children: ReactNode
+  active: boolean
+  onClick: () => void
 }) {
-  const id = useId()
   return (
-    <div className="station" data-open={open ? '' : undefined}>
-      <button
-        type="button"
-        className="station__head"
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={onToggle}
-      >
-        <span className="station__icon">{icon}</span>
-        <span className="station__text">
-          <span className="station__title">{title}</span>
-          <span className="station__note">{note}</span>
-        </span>
-        <span className="station__value">{value}</span>
-        <ChevronIcon className="station__chevron" />
-      </button>
-      <div className="station__fold" id={id} inert={!open}>
-        <div className="station__body">{children}</div>
-      </div>
-    </div>
+    <button type="button" className="tile" aria-pressed={active} onClick={onClick}>
+      <span className="tile__step" aria-hidden="true">
+        {step}
+      </span>
+      <span className="tile__icon">{icon}</span>
+      <span className="tile__label">{label}</span>
+      <span className="tile__value">{value}</span>
+    </button>
   )
 }
 
@@ -119,8 +104,8 @@ export function PlayScreen({
   /** On-screen sales so far while the shop is open. */
   const [served, setServed] = useState(0)
   const [confirmRestart, setConfirmRestart] = useState(false)
-  /** Which control is unfolded in the management panel, if any. */
-  const [control, setControl] = useState<Control | null>(null)
+  /** Which control is showing on the plan board. Price first: it is step one. */
+  const [control, setControl] = useState<Control | null>('price')
   const panelRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const skipRef = useRef<HTMLButtonElement>(null)
@@ -195,6 +180,29 @@ export function PlayScreen({
     })
   }
 
+  // One plain sentence about whether today's plan fits today's customers.
+  const match: { tone: 'good' | 'warn' | 'stop'; text: string } =
+    toSell === 0
+      ? { tone: 'stop', text: 'Nothing to sell yet. Tap Make.' }
+      : expected === 0
+        ? { tone: 'stop', text: 'Too pricey! Nobody would buy. Lower the price.' }
+        : plan.priceCents <= model.unitCostCents
+          ? {
+              tone: 'warn',
+              text: `Each one costs ${formatMoney(model.unitCostCents)} to make. This price earns nothing.`,
+            }
+          : toSell < expected
+            ? {
+                tone: 'warn',
+                text: `You might sell out: about ${expected} want one, ${toSell} to sell.`,
+              }
+            : toSell > expected
+              ? {
+                  tone: 'warn',
+                  text: `You might have leftovers: ${toSell} to sell, about ${expected} want one.`,
+                }
+              : { tone: 'good', text: 'Just right! Enough for everyone.' }
+
   const openForBusiness = () => {
     const today = simulateDay(model, game, plan, pickEvent(game.seed, game.day))
     const next = applyResult(game, today)
@@ -255,7 +263,16 @@ export function PlayScreen({
     : toSell
 
   return (
-    <section className="card card--play card--game">
+    <section
+      className="card card--play card--game"
+      style={
+        {
+          '--w-accent': blueprint.colors.accent,
+          '--w-wall': blueprint.colors.wall,
+          '--w-ink': blueprint.colors.ink,
+        } as CSSProperties
+      }
+    >
       <CloseButton label="Close and return home" onClick={onExit} />
       <header className="game-head">
         <p className="card__step">
@@ -283,7 +300,7 @@ export function PlayScreen({
                 ) : (
                   <>
                     <span className="hud-chip hud-chip--cash">
-                      <span className="coin" />
+                      <PouchIcon />
                       {formatMoney(game.cashCents)}
                     </span>
                     <span className="hud-chip hud-chip--crowd">
@@ -312,6 +329,7 @@ export function PlayScreen({
             street={
               <ShopStreet
                 icon={blueprint.productIcon}
+                theme={blueprint.theme}
                 visitors={cast}
                 extra={Math.max(0, crowd - MAX_STAGE_VISITORS)}
                 shelfCount={shelfCount}
@@ -387,85 +405,91 @@ export function PlayScreen({
         ) : (
           <div className="mgmt" ref={panelRef}>
             <h2 className="mgmt__title">Today's plan</h2>
-            <p className="mgmt__hint">
-              Selling: <strong>{product}</strong>. Tap a sign or your shelf in
-              the world, or a row here.
+
+            <div className="toolbar" role="group" aria-label="What would you like to change?">
+              <ToolTile
+                step={1}
+                icon={<PriceTagIcon />}
+                label="Price"
+                value={formatMoney(plan.priceCents)}
+                active={control === 'price'}
+                onClick={() => toggleControl('price')}
+              />
+              <ToolTile
+                step={2}
+                icon={<ProductIcon icon={blueprint.productIcon} />}
+                label="Make"
+                value={`+${plan.produce}`}
+                active={control === 'make'}
+                onClick={() => toggleControl('make')}
+              />
+              <ToolTile
+                step={3}
+                icon={<MegaphoneIcon />}
+                label="Flyers"
+                value={plan.flyers ? 'On' : 'Off'}
+                active={control === 'flyers'}
+                onClick={() => toggleControl('flyers')}
+              />
+            </div>
+
+            {control && (
+              <div className="mgmt__control" key={control}>
+                {control === 'price' && (
+                  <Dial
+                    label="Sell each one for"
+                    display={formatMoney(plan.priceCents)}
+                    valueText={`${formatMoney(plan.priceCents)}, about ${expected} customers`}
+                    value={plan.priceCents}
+                    min={model.minPriceCents}
+                    max={model.ceilingPriceCents}
+                    step={model.priceStepCents}
+                    hint="Lower price, more customers. Higher price, more coins each."
+                    onChange={(priceCents) => update({ priceCents })}
+                  />
+                )}
+                {control === 'make' && (
+                  <Dial
+                    label="Make today"
+                    display={String(plan.produce)}
+                    valueText={`${plan.produce} items, costing ${formatMoney(plan.produce * model.unitCostCents)}`}
+                    value={plan.produce}
+                    min={0}
+                    max={makeLimit}
+                    step={1}
+                    hint={
+                      makeLimit === 0
+                        ? 'Not enough cash to make more today.'
+                        : `Each costs ${formatMoney(model.unitCostCents)}. That is ${formatMoney(plan.produce * model.unitCostCents)} today. You can afford ${makeLimit}.`
+                    }
+                    onChange={(produce) => update({ produce })}
+                  />
+                )}
+                {control === 'flyers' && (
+                  <div className="play-action">
+                    <Switch
+                      label={`Hand out flyers (${formatMoney(model.flyerCostCents)})`}
+                      hint={
+                        canAffordFlyers
+                          ? `About ${model.flyerDemandPct}% more customers today.`
+                          : 'Not enough cash for flyers today.'
+                      }
+                      checked={plan.flyers}
+                      onToggle={() => update({ flyers: !plan.flyers })}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <p className={`match match--${match.tone}`} role="status">
+              <span className="match__dot" aria-hidden="true" />
+              {match.text}
             </p>
 
-            <Station
-              icon={<PriceTagIcon />}
-              title="Price"
-              value={formatMoney(plan.priceCents)}
-              note={`About ${expected} ${expected === 1 ? 'customer' : 'customers'}`}
-              open={control === 'price'}
-              onToggle={() => toggleControl('price')}
-            >
-              <Dial
-                label="Selling price"
-                display={formatMoney(plan.priceCents)}
-                valueText={`${formatMoney(plan.priceCents)}, about ${expected} customers`}
-                value={plan.priceCents}
-                min={model.minPriceCents}
-                max={model.ceilingPriceCents}
-                step={model.priceStepCents}
-                hint="Higher prices earn more per sale but bring fewer customers."
-                onChange={(priceCents) => update({ priceCents })}
-              />
-            </Station>
-
-            <Station
-              icon={<ProductIcon icon={blueprint.productIcon} />}
-              title="Make"
-              value={`+${plan.produce}`}
-              note={`${toSell} on the shelf to sell`}
-              open={control === 'make'}
-              onToggle={() => toggleControl('make')}
-            >
-              <Dial
-                label="Make today"
-                display={String(plan.produce)}
-                valueText={`${plan.produce} items, costing ${formatMoney(plan.produce * model.unitCostCents)}`}
-                value={plan.produce}
-                min={0}
-                max={makeLimit}
-                step={1}
-                hint={
-                  makeLimit === 0
-                    ? 'You do not have enough cash to make more today.'
-                    : `${formatMoney(model.unitCostCents)} each, so ${formatMoney(plan.produce * model.unitCostCents)} today. You can afford up to ${makeLimit}.`
-                }
-                onChange={(produce) => update({ produce })}
-              />
-            </Station>
-
-            <Station
-              icon={<MegaphoneIcon />}
-              title="Flyers"
-              value={plan.flyers ? 'On' : 'Off'}
-              note={
-                canAffordFlyers
-                  ? `${formatMoney(model.flyerCostCents)} for about ${model.flyerDemandPct}% more`
-                  : 'Not enough cash today'
-              }
-              open={control === 'flyers'}
-              onToggle={() => toggleControl('flyers')}
-            >
-              <div className="play-action">
-                <Switch
-                  label={`Hand out flyers (${formatMoney(model.flyerCostCents)})`}
-                  hint={
-                    canAffordFlyers
-                      ? `About ${model.flyerDemandPct}% more customers today.`
-                      : 'Not enough cash for flyers today.'
-                  }
-                  checked={plan.flyers}
-                  onToggle={() => update({ flyers: !plan.flyers })}
-                />
-              </div>
-            </Station>
-
             <p className="plan-summary">
-              Spending <strong>{formatMoney(spending)}</strong> of your{' '}
+              Selling <strong>{product}</strong>. Spending{' '}
+              <strong>{formatMoney(spending)}</strong> of your{' '}
               {formatMoney(game.cashCents)}.
               {yesterday &&
                 ` Yesterday: ${formatSigned(yesterday.operatingProfitCents)} ${

@@ -170,6 +170,8 @@ export function CreateScreen({
     [progress.idea, offering, theme, direction],
   )
   const blueprint = world.blueprint
+  // The dragon nursery shows its full lived-in scene before play begins.
+  const richPreview = blueprint.theme === 'creature-care'
   // Changing a shop that is already saved, rather than making a new one.
   const editingSaved = progress.step === 'ready' && !unsavedDraft
 
@@ -233,7 +235,7 @@ export function CreateScreen({
         <h1 className="card__title" ref={headingRef} tabIndex={-1}>
           {shopName} is ready to open
         </h1>
-        <WorldScene blueprint={blueprint} sign={shopName} />
+        <WorldScene blueprint={blueprint} sign={shopName} rich={richPreview} />
         <p className="world-label">
           <ProductIcon icon={blueprint.productIcon} />
           {blueprint.label}
@@ -295,7 +297,7 @@ export function CreateScreen({
         {progress.idea}
       </p>
 
-      <WorldScene blueprint={blueprint} sign={shopName} />
+      <WorldScene blueprint={blueprint} sign={shopName} rich={richPreview} />
       <p className="world-label" role="status">
         <ProductIcon icon={blueprint.productIcon} />
         {blueprint.label}

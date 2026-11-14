@@ -1213,3 +1213,21 @@
   color: #5a3200;
   background: #ffe9a8;
 }
+
+/* A sleeping creature's slow breath. */
+.w-breathe {
+  transform-origin: center bottom;
+  animation: w-breathe 3.600s ease-in-out infinite;
+}
+
+@keyframes w-breathe {
+  50% {
+    transform: scale(1.045, 1.07);
+  }
+}
+
+/* A detailed scene keeps its foreground clear: the name sign sits just below
+   it rather than over the bottom edge. */
+.world[data-rich] > .world__view + .world__sign {
+  margin-top: -5px;
+}

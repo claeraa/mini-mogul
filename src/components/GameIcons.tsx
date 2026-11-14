@@ -58,6 +58,17 @@ export function SunIcon({ className }: IconProps) {
   )
 }
 
+export function PouchIcon({ className }: IconProps) {
+  return (
+    <svg {...frame(className)}>
+      <path d="M8.500 7.500c-4 3-5.500 6.500-5.500 9.500 0 3 2.500 4.500 9 4.500s9-1.500 9-4.500c0-3-1.500-6.500-5.500-9.500z" fill="#f2b441" stroke="#9a5a14" strokeWidth="1.500" strokeLinejoin="round" />
+      <path d="M8 3.500c1.300 1 2.700 1 4 0 1.300 1 2.700 1 4 0l-1.500 4h-5z" fill="#ffd978" stroke="#9a5a14" strokeWidth="1.500" strokeLinejoin="round" />
+      <path d="M8 7.500h8" stroke="#9a5a14" strokeWidth="1.800" strokeLinecap="round" />
+      <path d="M12 11.500l1.200 2.500 2.700.3-2 1.900.6 2.700-2.500-1.400-2.500 1.400.6-2.700-2-1.900 2.700-.3z" fill="#fff3a0" />
+    </svg>
+  )
+}
+
 export function ChevronIcon({ className }: IconProps) {
   return (
     <svg {...frame(className)}>

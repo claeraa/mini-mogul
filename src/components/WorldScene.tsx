@@ -1,12 +1,13 @@
 import { useId } from 'react'
 import type { ReactNode } from 'react'
+import { shade } from '../world/color.ts'
 import type {
   BiomeId,
   DecorationId,
   WorldBlueprint,
   WorldColors,
 } from '../world/blueprint.ts'
-import { Foreground, Lighting, ThemeDetails } from './WorldDetails.tsx'
+import { Foreground, Lighting, ThemeDetails, ThemeGround } from './WorldDetails.tsx'
 import { Structure, WorldProp } from './WorldParts.tsx'
 
 type WorldSceneProps = {
@@ -45,7 +46,9 @@ const STARS = [
 
 function RoundTree({ x, y, s = 1, fill }: { x: number; y: number; s?: number; fill: string }) {
   return (
-    <g transform={`translate(${x} ${y}) scale(${s})`}>
+    <g transform={`translate(${x} ${y}) scale(${s})`} filter="url(#mm-ink)">
+      <ellipse cx="0" cy="2" rx="15" ry="3.500" fill="#000" opacity="0.12" />
+      <circle cx="7" cy="-24" r="13" fill={shade(fill, 0.14)} />
       <rect x="-3" y="-20" width="6" height="22" rx="3" fill="#a77b52" />
       <circle cx="0" cy="-30" r="16" fill={fill} />
       <circle cx="-10" cy="-22" r="10" fill={fill} />
@@ -57,7 +60,7 @@ function RoundTree({ x, y, s = 1, fill }: { x: number; y: number; s?: number; fi
 
 function Pine({ x, y, s = 1, fill }: { x: number; y: number; s?: number; fill: string }) {
   return (
-    <g transform={`translate(${x} ${y}) scale(${s})`}>
+    <g transform={`translate(${x} ${y}) scale(${s})`} filter="url(#mm-ink)">
       <rect x="-3" y="-10" width="6" height="12" rx="2" fill="#8f6a4a" />
       <path d="M-18 -8L0 -34l18 26z" fill={fill} stroke={fill} strokeWidth="4" strokeLinejoin="round" />
       <path d="M-13 -26L0 -48l13 22z" fill={fill} stroke={fill} strokeWidth="4" strokeLinejoin="round" />
@@ -103,8 +106,8 @@ function Backdrop({ biome, c }: { biome: BiomeId; c: WorldColors }) {
       return (
         <>
           <Hills c={c} />
-          <RoundTree x={30} y={166} fill="#6fc47a" />
-          <RoundTree x={296} y={164} s={0.850} fill="#7fd08a" />
+          <RoundTree x={30} y={166} fill={c.foliage} />
+          <RoundTree x={296} y={164} s={0.850} fill={c.foliageShade} />
           <Ground c={c} />
           <Dots points={[[20, 194], [44, 202], [96, 198], [118, 188], [206, 200], [290, 198], [304, 188]]} fills={['#fff', '#ffe873']} />
         </>
@@ -113,8 +116,8 @@ function Backdrop({ biome, c }: { biome: BiomeId; c: WorldColors }) {
       return (
         <>
           <Hills c={c} />
-          <RoundTree x={26} y={164} fill="#6fc47a" />
-          <RoundTree x={300} y={162} s={0.900} fill="#7fd08a" />
+          <RoundTree x={26} y={164} fill={c.foliage} />
+          <RoundTree x={300} y={162} s={0.900} fill={c.foliageShade} />
           <Ground c={c} />
           <g stroke="#fffaf0" strokeWidth="3" strokeLinecap="round">
             <path d="M6 180h84M230 180h84" />
@@ -206,6 +209,21 @@ function Sky({ blueprint, gradientId }: { blueprint: WorldBlueprint; gradientId:
   return (
     <>
       <defs>
+        {/* Draws a soft outline around a shape in a darker tone of its own
+            colour, so every object is edged in its own hue, never in black. */}
+        <filter id="mm-ink" x="-15%" y="-15%" width="130%" height="130%">
+          <feMorphology in="SourceGraphic" operator="dilate" radius="1.100" result="fat" />
+          <feColorMatrix
+            in="fat"
+            type="matrix"
+            values="0.56 0 0 0 0  0 0.46 0 0 0  0 0 0.44 0 0  0 0 0 1 0"
+            result="edge"
+          />
+          <feMerge>
+            <feMergeNode in="edge" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor={c.skyTop} />
           <stop offset="1" stopColor={c.skyBottom} />
@@ -404,6 +422,7 @@ export function WorldScene({
       className="world"
       data-theme={blueprint.theme}
       data-time={blueprint.timeOfDay}
+      data-rich={rich ? '' : undefined}
     >
       <div className="world__view">
         <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${blueprint.label} scene`}>
@@ -411,18 +430,40 @@ export function WorldScene({
           <Backdrop biome={blueprint.biome} c={c} />
           {night && <rect width={W} height={H} fill="#1d1b5a" opacity="0.28" />}
           {rich && <Lighting blueprint={blueprint} />}
+          {rich && (
+            <g filter="url(#mm-ink)">
+              <ThemeGround theme={blueprint.theme} c={c} />
+            </g>
+          )}
           <g transform={`translate(${BASE_X} ${BASE_Y})`}>
-            <g className="w-settle" key={blueprint.structure}>
+            <g className="w-settle" key={blueprint.structure} filter="url(#mm-ink)">
               <Structure type={blueprint.structure} colors={c} icon={blueprint.productIcon} />
             </g>
           </g>
           {blueprint.props.slice(0, PROP_SLOTS.length).map((id, i) => (
-            <WorldProp key={id} id={id} {...PROP_SLOTS[i]} colors={c} icon={blueprint.productIcon} />
+            <g key={id}>
+              <ellipse
+                cx={PROP_SLOTS[i].x}
+                cy={PROP_SLOTS[i].y + 1}
+                rx={19 * PROP_SLOTS[i].scale}
+                ry={4 * PROP_SLOTS[i].scale}
+                fill={shade(c.ground, 0.3)}
+                opacity="0.55"
+              />
+              <g filter="url(#mm-ink)">
+                <WorldProp id={id} {...PROP_SLOTS[i]} colors={c} icon={blueprint.productIcon} />
+              </g>
+            </g>
           ))}
           {rich && (
             <>
-              <ThemeDetails theme={blueprint.theme} c={c} icon={blueprint.productIcon} />
-              <Foreground biome={blueprint.biome} c={c} />
+              <g filter="url(#mm-ink)">
+                <Foreground biome={blueprint.biome} c={c} />
+              </g>
+              {/* The business's own things stand in front of the scenery. */}
+              <g filter="url(#mm-ink)">
+                <ThemeDetails theme={blueprint.theme} c={c} icon={blueprint.productIcon} />
+              </g>
             </>
           )}
           {blueprint.decorations.map((id) => (
