@@ -1,11 +1,14 @@
 import { motion } from 'motion/react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import type { Coaching } from '../ai/schema.ts'
+import { fallbackCoaching } from '../game/coach.ts'
 import type { BusinessModel, DayResult } from '../game/model.ts'
 import { formatMoney, formatSigned } from '../game/money.ts'
 import { summarizeDay } from '../game/report.ts'
 import type { ReportLine } from '../game/report.ts'
-import { eventById, takeaway } from '../game/simulation.ts'
+import { eventById } from '../game/simulation.ts'
+import { requestCoaching } from '../lib/ai.ts'
 import type { ProductIconId } from '../world/blueprint.ts'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
 import { ProductIcon } from './WorldParts.tsx'
@@ -15,6 +18,9 @@ type DayReportProps = {
   result: DayResult
   shopName: string
   icon: ProductIconId
+  /** Sent to the AI coach along with the day's numbers. Never the player's name. */
+  shop: { idea: string; offering: string }
+  aiOn: boolean
   onNextDay: () => void
   onExit: () => void
 }
@@ -104,9 +110,30 @@ export function DayReport({
   result: r,
   shopName,
   icon,
+  shop,
+  aiOn,
   onNextDay,
   onExit,
 }: DayReportProps) {
+  // The built-in coach answers at once; the AI coach replaces it if and when
+  // a checked reply arrives. Coaching is words only and never changes the game.
+  const [aiCoaching, setAiCoaching] = useState<Coaching | null>(null)
+  const [asking, setAsking] = useState(aiOn)
+  const { idea, offering } = shop
+  useEffect(() => {
+    if (!aiOn) return
+    let live = true
+    requestCoaching(model, r, { idea, offering }).then((coaching) => {
+      if (!live) return
+      setAiCoaching(coaching)
+      setAsking(false)
+    })
+    return () => {
+      live = false
+    }
+  }, [aiOn, model, r, idea, offering])
+  const coaching = aiCoaching ?? fallbackCoaching(model, r)
+
   const headingRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
     headingRef.current?.focus()
@@ -364,10 +391,28 @@ export function DayReport({
         )}
       </motion.div>
 
-      <p className="tip">
-        <SparkIcon />
-        <span>{takeaway(model, r)}</span>
-      </p>
+      <section className="coach" aria-live="polite">
+        <p className="coach__by">
+          <SparkIcon />
+          {aiCoaching
+            ? 'From the AI Director'
+            : asking
+              ? 'Your coach (the AI Director is reading your day…)'
+              : 'Your coach'}
+        </p>
+        <p>{coaching.encouragement}</p>
+        <p>
+          <strong>Try this: </strong>
+          {coaching.suggestion}
+        </p>
+        {coaching.challenge && <p className="coach__challenge">{coaching.challenge}</p>}
+        {aiCoaching && (
+          <p className="field__help">
+            The AI only explains. Every number on this page comes from the
+            game's own maths.
+          </p>
+        )}
+      </section>
 
       <div className="card__actions">
         <button type="button" className="text-button" onClick={onExit}>

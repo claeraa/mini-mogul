@@ -376,6 +376,7 @@ const BIOME_COLORS: Record<
 }
 
 const MAX_DECORATIONS = 4
+const MAX_PROPS = 3
 
 // ---- Helpers ----------------------------------------------------------------
 
@@ -434,57 +435,105 @@ function pickIcon(offeringTokens: string[], fallback: ProductIconId): ProductIco
 
 // ---- The generator ----------------------------------------------------------
 
+/**
+ * The creative choices behind a world, before the player's style is applied.
+ * The rules below make one from keywords; the AI Director makes one from an
+ * LLM's (validated) reading of the idea. Both go through assembleBlueprint,
+ * so a world can only ever contain things the renderer knows how to draw.
+ */
+export type WorldChoice = {
+  theme: WorldThemeId
+  label: string
+  structure: StructureType
+  biome: BiomeId
+  night: boolean
+  kind: 'product' | 'service'
+  props: PropId[]
+  decorations: DecorationId[]
+  productIcon: ProductIconId
+  wall: string
+  wallShade: string
+  accent: string
+  reactions: string[]
+}
+
+/** Applies the player's style and the renderer's limits to a choice. */
+export function assembleBlueprint(
+  choice: WorldChoice,
+  input: BlueprintInput,
+): WorldBlueprint {
+  const style = STYLE_PALETTES[input.style] ?? STYLE_PALETTES.cottage
+  const night = style.night || choice.night
+  const biome = style.biome ?? choice.biome
+  const [skyTop, skyBottom] = night ? style.nightSky : style.sky
+
+  const wanted = [...choice.decorations, ...style.decorations].filter(
+    (id) =>
+      // Butterflies and gulls are asleep at night.
+      !(night && (id === 'butterflies' || id === 'seagulls')) &&
+      // Only the cottage has a chimney for smoke to rise from.
+      !(id === 'smoke' && choice.structure !== 'cottage'),
+  )
+
+  return {
+    theme: choice.theme,
+    label: choice.label,
+    structure: choice.structure,
+    biome,
+    timeOfDay: night ? 'night' : 'day',
+    kind: choice.kind,
+    props: [...new Set(choice.props)].slice(0, MAX_PROPS),
+    decorations: [...new Set(wanted)].slice(0, MAX_DECORATIONS),
+    productIcon: pickIcon(tokenize(input.offering ?? ''), choice.productIcon),
+    colors: {
+      skyTop,
+      skyBottom,
+      glow: night ? '#fdf6d8' : '#fff0a3',
+      ...BIOME_COLORS[biome],
+      wall: choice.wall,
+      wallShade: choice.wallShade,
+      roof: style.roof,
+      trim: style.trim,
+      accent: choice.accent,
+    },
+    reactions: [...choice.reactions],
+  }
+}
+
 export function generateWorldBlueprint(input: BlueprintInput): WorldBlueprint {
   const ideaTokens = tokenize(input.idea)
   const offeringTokens = tokenize(input.offering ?? '')
   const allTokens = [...ideaTokens, ...offeringTokens]
 
   const archetype = pickArchetype(ideaTokens, offeringTokens)
-  const style = STYLE_PALETTES[input.style] ?? STYLE_PALETTES.cottage
-
-  const night = style.night || hits(allTokens, NIGHT_WORDS) > 0
+  const night = hits(allTokens, NIGHT_WORDS) > 0
   const magic = hits(allTokens, MAGIC_WORDS) > 0
-  const biome = style.biome ?? archetype.biome
-  const [skyTop, skyBottom] = night ? style.nightSky : style.sky
+  const styleNight = (STYLE_PALETTES[input.style] ?? STYLE_PALETTES.cottage).night
+  const mood = night || styleNight ? 'Moonlit' : magic ? 'Enchanted' : 'Cozy'
 
-  // Mood first, then the world's own touches, then the style's.
-  const wanted: DecorationId[] = [
-    ...(magic ? (['sparkles'] as const) : []),
-    ...(night ? (['fireflies'] as const) : []),
-    ...archetype.decorations,
-    ...style.decorations,
-  ]
-  // Butterflies and gulls are asleep at night.
-  const awake = night
-    ? wanted.filter((id) => id !== 'butterflies' && id !== 'seagulls')
-    : wanted
-  const decorations = [...new Set(awake)].slice(0, MAX_DECORATIONS)
-
-  const mood = night ? 'Moonlit' : magic ? 'Enchanted' : 'Cozy'
-
-  return {
-    theme: archetype.theme,
-    label: `${mood} ${archetype.baseLabel}`,
-    structure: archetype.structure,
-    biome,
-    timeOfDay: night ? 'night' : 'day',
-    kind: hits(allTokens, SERVICE_WORDS) > 0 ? 'service' : 'product',
-    props: [...archetype.props],
-    decorations,
-    productIcon: pickIcon(offeringTokens, archetype.productIcon),
-    colors: {
-      skyTop,
-      skyBottom,
-      glow: night ? '#fdf6d8' : '#fff0a3',
-      ...BIOME_COLORS[biome],
+  return assembleBlueprint(
+    {
+      theme: archetype.theme,
+      label: `${mood} ${archetype.baseLabel}`,
+      structure: archetype.structure,
+      biome: archetype.biome,
+      night,
+      kind: hits(allTokens, SERVICE_WORDS) > 0 ? 'service' : 'product',
+      // Mood first, then the world's own touches.
+      props: archetype.props,
+      decorations: [
+        ...(magic ? (['sparkles'] as const) : []),
+        ...(night || styleNight ? (['fireflies'] as const) : []),
+        ...archetype.decorations,
+      ],
+      productIcon: archetype.productIcon,
       wall: archetype.wall,
       wallShade: archetype.wallShade,
-      roof: style.roof,
-      trim: style.trim,
       accent: archetype.accent,
+      reactions: archetype.reactions,
     },
-    reactions: [...archetype.reactions],
-  }
+    input,
+  )
 }
 
 /** The heading for the player's first product or service. */

@@ -14,7 +14,8 @@ import type { GameState } from '../game/state.ts'
 import { playSfx } from '../lib/audio.ts'
 import { clearGame, loadGame, saveGame } from '../lib/storage.ts'
 import type { Progress } from '../lib/storage.ts'
-import { generateWorldBlueprint } from '../world/blueprint.ts'
+import type { WorldDirection } from '../ai/schema.ts'
+import { buildWorld } from '../ai/world.ts'
 import { MAX_STAGE_VISITORS, shelfDuring, stageVisitors } from '../world/stage.ts'
 import { Switch } from './AudioSettings.tsx'
 import { CloseButton, ConfirmDialog } from './ConfirmDialog.tsx'
@@ -26,6 +27,9 @@ import { WorldScene } from './WorldScene.tsx'
 
 type PlayScreenProps = {
   shop: Progress
+  /** The AI Director's checked reading of the idea, when there is one. */
+  direction: WorldDirection | null
+  aiOn: boolean
   /** Skips the customers' walk-through and goes straight to the report. */
   reducedMotion: boolean
   onExit: () => void
@@ -43,7 +47,13 @@ const freshGame = () => newGame(model, Math.floor(Math.random() * 2 ** 32))
 type Phase = 'plan' | 'open' | 'report'
 
 /** The shop in its world: plan a day, watch it happen, read the report. */
-export function PlayScreen({ shop, reducedMotion, onExit }: PlayScreenProps) {
+export function PlayScreen({
+  shop,
+  direction,
+  aiOn,
+  reducedMotion,
+  onExit,
+}: PlayScreenProps) {
   const [game, setGame] = useState<GameState>(() => loadGame() ?? freshGame())
   const [plan, setPlan] = useState<DayPlan>(() =>
     clampPlan(model, game, game.lastPlan),
@@ -58,12 +68,11 @@ export function PlayScreen({ shop, reducedMotion, onExit }: PlayScreenProps) {
 
   const blueprint = useMemo(
     () =>
-      generateWorldBlueprint({
-        idea: shop.idea,
-        offering: shop.offering,
-        style: shop.theme,
-      }),
-    [shop.idea, shop.offering, shop.theme],
+      buildWorld(
+        { idea: shop.idea, offering: shop.offering, style: shop.theme },
+        direction,
+      ).blueprint,
+    [shop.idea, shop.offering, shop.theme, direction],
   )
 
   useEffect(() => {
@@ -150,6 +159,8 @@ export function PlayScreen({ shop, reducedMotion, onExit }: PlayScreenProps) {
         result={result}
         shopName={shop.shopName}
         icon={blueprint.productIcon}
+        shop={{ idea: shop.idea, offering: shop.offering }}
+        aiOn={aiOn}
         onNextDay={planNextDay}
         onExit={onExit}
       />

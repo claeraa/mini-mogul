@@ -1,11 +1,14 @@
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { WorldDirection } from './ai/schema.ts'
+import { ideaKey } from './ai/world.ts'
 import { AmbientLayers } from './components/AmbientLayers.tsx'
 import { AudioSettings } from './components/AudioSettings.tsx'
 import { CreateScreen } from './components/CreateScreen.tsx'
 import { HomeScene } from './components/HomeScene.tsx'
 import { ImagineScreen } from './components/ImagineScreen.tsx'
 import { PlayScreen } from './components/PlayScreen.tsx'
+import { aiAvailable, requestWorldDirection, savedDirection } from './lib/ai.ts'
 import { initAudio, playSfx, setAudioPrefs } from './lib/audio.ts'
 import { useMediaQuery, usePointerParallax } from './lib/hooks.ts'
 import {
@@ -29,6 +32,14 @@ const formMotion = {
   transition: { duration: 0.35, ease: 'easeOut' },
 } as const
 
+/** A world imagined this session, or one saved on this device earlier. */
+function findDirection(
+  directions: Record<string, WorldDirection>,
+  idea: string | undefined,
+): WorldDirection | null {
+  return idea ? (directions[ideaKey(idea)] ?? savedDirection(idea)) : null
+}
+
 function App() {
   const [screen, setScreen] = useState<Screen>('home')
   const [settings, setSettings] = useState<Settings>(loadSettings)
@@ -41,10 +52,52 @@ function App() {
   const [launching, setLaunching] = useState(false)
   const [introDone, setIntroDone] = useState(false)
 
+  // The AI Imagination Director. Everything works without it.
+  const [aiOn, setAiOn] = useState(false)
+  const [directions, setDirections] = useState<Record<string, WorldDirection>>({})
+  const [aiBusy, setAiBusy] = useState<{ key: string; state: 'thinking' | 'failed' } | null>(null)
+
   const rootRef = useRef<HTMLDivElement>(null)
   const timers = useRef<number[]>([])
 
   const working = draft ?? progress
+
+  useEffect(() => {
+    let live = true
+    aiAvailable().then((available) => {
+      if (live) setAiOn(available)
+    })
+    return () => {
+      live = false
+    }
+  }, [])
+
+  const workingDirection = useMemo(
+    () => findDirection(directions, working?.idea),
+    [directions, working?.idea],
+  )
+  const savedShopDirection = useMemo(
+    () => findDirection(directions, progress?.idea),
+    [directions, progress?.idea],
+  )
+
+  /** Asks the Director to imagine a world. A failure just leaves the rules-built one. */
+  const imagine = useCallback((idea: string, offering: string) => {
+    const key = ideaKey(idea)
+    setAiBusy({ key, state: 'thinking' })
+    requestWorldDirection(idea, offering).then((direction) => {
+      if (direction) setDirections((known) => ({ ...known, [key]: direction }))
+      setAiBusy((current) =>
+        current?.key !== key ? current : direction ? null : { key, state: 'failed' },
+      )
+    })
+  }, [])
+
+  const aiState = !aiOn
+    ? 'off'
+    : working && aiBusy?.key === ideaKey(working.idea)
+      ? aiBusy.state
+      : 'idle'
 
   const systemReduced = useMediaQuery('(prefers-reduced-motion: reduce)')
   const reducedMotion = settings.reduceMotion ?? systemReduced
@@ -117,6 +170,8 @@ function App() {
   const editingSaved = resuming && draft === null && progress?.step === 'ready'
 
   const handleIdea = (values: { playerName: string; idea: string }) => {
+    // One call per new idea; a world already imagined for it is reused.
+    if (aiOn && !findDirection(directions, values.idea)) imagine(values.idea, '')
     if (editingSaved && progress) {
       // "Save changes": the same shop keeps its name, style and game days;
       // only its idea (and so its world) changes.
@@ -218,6 +273,9 @@ function App() {
             <motion.main key="create" className="screen screen--form" {...formMotion}>
               <CreateScreen
                 progress={working}
+                direction={workingDirection}
+                ai={aiState}
+                onAskAi={(offering) => imagine(working.idea, offering)}
                 unsavedDraft={draft !== null}
                 replacesShop={replacesShop}
                 onBack={() => go('imagine')}
@@ -236,6 +294,8 @@ function App() {
             <motion.main key="play" className="screen screen--form" {...formMotion}>
               <PlayScreen
                 shop={progress}
+                direction={savedShopDirection}
+                aiOn={aiOn}
                 reducedMotion={reducedMotion}
                 onExit={() => go('home')}
               />

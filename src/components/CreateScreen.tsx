@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { CONCEPTS } from '../ai/schema.ts'
+import type { WorldDirection } from '../ai/schema.ts'
+import { buildWorld } from '../ai/world.ts'
+import type { World } from '../ai/world.ts'
 import type { Progress, ThemeId } from '../lib/storage.ts'
 import { DISCARD_COPY, THEMES } from '../lib/constants.ts'
 import { CloseButton, ConfirmDialog } from './ConfirmDialog.tsx'
-import { generateWorldBlueprint, offeringLabel } from '../world/blueprint.ts'
+import { offeringLabel } from '../world/blueprint.ts'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
 import { ProductIcon } from './WorldParts.tsx'
 import { WorldScene } from './WorldScene.tsx'
@@ -12,6 +16,11 @@ type ShopValues = { shopName: string; theme: ThemeId; offering: string }
 
 type CreateScreenProps = {
   progress: Progress
+  /** The AI Director's checked reading of the idea, when there is one. */
+  direction: WorldDirection | null
+  /** 'off' when this site has no AI Director switched on. */
+  ai: 'off' | 'idle' | 'thinking' | 'failed'
+  onAskAi: (offering: string) => void
   /** True when the idea being shaped has not been saved yet. */
   unsavedDraft: boolean
   /** Name of an already saved shop that saving this one would replace. */
@@ -35,8 +44,102 @@ function suggestShopName(playerName: string, idea: string) {
   return (playerName ? `${playerName}'s ${words}` : words).slice(0, 40)
 }
 
+/**
+ * What the Imagination Director made of the idea: who visits, what to sell
+ * and what the business teaches. Says plainly when the built-in rules made
+ * the world instead.
+ */
+function DirectorNotes({
+  world,
+  ai,
+  onAskAi,
+  onPickOffering,
+}: {
+  world: World
+  ai: CreateScreenProps['ai']
+  onAskAi?: () => void
+  onPickOffering?: (offering: string) => void
+}) {
+  const { story, blueprint, source } = world
+
+  if (ai === 'thinking') {
+    return (
+      <div className="director director--thinking" role="status">
+        <p className="director__by">
+          <SparkIcon />
+          The Imagination Director is dreaming up your world…
+        </p>
+        <p className="field__help">You can keep going while it thinks.</p>
+      </div>
+    )
+  }
+
+  if (source === 'rules') {
+    if (ai === 'off' || !onAskAi) return null
+    return (
+      <div className="director director--rules" role="status">
+        <p className="field__help">
+          {ai === 'failed'
+            ? 'The Imagination Director could not be reached, so Mini Mogul built this world with its own rules. Everything still works.'
+            : 'Built with Mini Mogul\'s own world rules.'}
+        </p>
+        <button type="button" className="chip" onClick={onAskAi}>
+          <SparkIcon /> Ask the Imagination Director
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="director" role="status">
+      <p className="director__by">
+        <SparkIcon />
+        Imagined by the AI Director
+      </p>
+      <p>{story.summary}</p>
+      <p className="director__line">
+        <span>Your customers</span>
+        {story.customers}
+      </p>
+      {onPickOffering && story.offerings.length > 0 && (
+        <div className="director__line">
+          <span>Ideas for your first {blueprint.kind === 'service' ? 'service' : 'product'}</span>
+          <ul className="director__chips">
+            {story.offerings.map((idea) => (
+              <li key={idea}>
+                <button type="button" className="chip" onClick={() => onPickOffering(idea)}>
+                  {idea}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="director__line">
+        <span>You will learn about</span>
+        <ul className="director__concepts">
+          {story.concepts.map((concept) => (
+            <li key={concept.id}>
+              <strong>{CONCEPTS[concept.id]}.</strong> {concept.why}
+            </li>
+          ))}
+        </ul>
+      </div>
+      {blueprint.kind === 'service' && (
+        <p className="field__help">
+          This is a service business. For now Mini Mogul plays every business
+          the same way: each one you prepare counts as an item on your shelf.
+        </p>
+      )}
+    </div>
+  )
+}
+
 export function CreateScreen({
   progress,
+  direction,
+  ai,
+  onAskAi,
   unsavedDraft,
   replacesShop,
   onBack,
@@ -62,10 +165,11 @@ export function CreateScreen({
   const nameRef = useRef<HTMLInputElement>(null)
 
   // The world is rebuilt from the words on screen, so it updates as you type.
-  const blueprint = useMemo(
-    () => generateWorldBlueprint({ idea: progress.idea, offering, style: theme }),
-    [progress.idea, offering, theme],
+  const world = useMemo(
+    () => buildWorld({ idea: progress.idea, offering, style: theme }, direction),
+    [progress.idea, offering, theme, direction],
   )
+  const blueprint = world.blueprint
   // Changing a shop that is already saved, rather than making a new one.
   const editingSaved = progress.step === 'ready' && !unsavedDraft
 
@@ -134,6 +238,7 @@ export function CreateScreen({
           <ProductIcon icon={blueprint.productIcon} />
           {blueprint.label}
         </p>
+        <DirectorNotes world={world} ai={ai} />
         <dl className="summary">
           <div>
             <dt>The idea</dt>
@@ -195,6 +300,12 @@ export function CreateScreen({
         <ProductIcon icon={blueprint.productIcon} />
         {blueprint.label}
       </p>
+      <DirectorNotes
+        world={world}
+        ai={ai}
+        onAskAi={() => onAskAi(offering.trim())}
+        onPickOffering={offering.trim() ? undefined : setOffering}
+      />
 
       <div className="field">
         <label htmlFor="shop-name">Shop name</label>
