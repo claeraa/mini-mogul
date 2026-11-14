@@ -56,7 +56,7 @@ export function ShopStreet({
                 ? `guest guest--turn${visitor.buys ? '' : ' guest--missed'}`
                 : 'guest'
             }
-            style={{ '--i': i, '--row': i % 2 } as CSSProperties}
+            style={{ '--i': i, '--row': i % 3 } as CSSProperties}
           >
             <span className="guest__body" />
             {playing && (

@@ -214,7 +214,7 @@ function Cave({ colors: c, icon }: StructureProps) {
       <circle cx="-36" cy="-70" r="4" fill={c.wallShade} />
       <circle cx="50" cy="-26" r="5" fill={c.wall} opacity="0.6" />
       <path d="M-27 0v-30a27 30 0 0 1 54 0V0z" fill="#3e2f6e" />
-      <ellipse cx="0" cy="-4" rx="20" ry="7" fill={c.accent} opacity="0.75" />
+      <ellipse cx="0" cy="-5" rx="17" ry="5" fill={c.accent} opacity="0.55" />
       <g className="w-blink">
         <ellipse cx="-8" cy="-30" rx="3.500" ry="4.500" fill={c.trim} />
         <ellipse cx="8" cy="-30" rx="3.500" ry="4.500" fill={c.trim} />
