@@ -1,3 +1,6 @@
+import { parseGame } from '../game/state.ts'
+import type { GameState } from '../game/state.ts'
+
 export type Settings = {
   /** Master switch. Off by default so nothing ever plays unasked. */
   sound: boolean
@@ -74,4 +77,24 @@ export function loadProgress(): Progress | null {
 
 export function saveProgress(progress: Progress) {
   write(PROGRESS_KEY, progress)
+}
+
+// ---- Opening-day game ------------------------------------------------------
+
+const GAME_KEY = 'mini-mogul:game'
+
+export function loadGame(): GameState | null {
+  return parseGame(read<GameState>(GAME_KEY))
+}
+
+export function saveGame(game: GameState) {
+  write(GAME_KEY, game)
+}
+
+export function clearGame() {
+  try {
+    localStorage.removeItem(GAME_KEY)
+  } catch {
+    // Nothing to clear if storage is unavailable.
+  }
 }

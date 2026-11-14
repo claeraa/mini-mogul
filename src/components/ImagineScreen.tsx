@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { DISCARD_COPY } from '../lib/constants.ts'
+import { CloseButton, ConfirmDialog } from './ConfirmDialog.tsx'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
 
 type ImagineScreenProps = {
   initialName: string
   initialIdea: string
-  onBack: () => void
+  /** True when the prefilled idea itself has not been saved yet. */
+  unsavedDraft: boolean
+  /** Leave for home, dropping whatever is unsaved. */
+  onExit: () => void
+  onDirtyChange: (dirty: boolean) => void
   onSubmit: (values: { playerName: string; idea: string }) => void
 }
 
@@ -21,18 +27,34 @@ const IDEA_LIMIT = 120
 export function ImagineScreen({
   initialName,
   initialIdea,
-  onBack,
+  unsavedDraft,
+  onExit,
+  onDirtyChange,
   onSubmit,
 }: ImagineScreenProps) {
   const [playerName, setPlayerName] = useState(initialName)
   const [idea, setIdea] = useState(initialIdea)
   const [error, setError] = useState('')
+  const [confirming, setConfirming] = useState(false)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const ideaRef = useRef<HTMLTextAreaElement>(null)
+
+  const dirty =
+    unsavedDraft || playerName !== initialName || idea !== initialIdea
 
   useEffect(() => {
     headingRef.current?.focus()
   }, [])
+
+  useEffect(() => {
+    onDirtyChange(dirty)
+    return () => onDirtyChange(false)
+  }, [dirty, onDirtyChange])
+
+  const leave = () => {
+    if (dirty) setConfirming(true)
+    else onExit()
+  }
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -47,6 +69,7 @@ export function ImagineScreen({
 
   return (
     <form className="card" onSubmit={handleSubmit} noValidate>
+      <CloseButton label="Close and return home" onClick={leave} />
       <p className="card__step">
         <SparkIcon />
         Imagine
@@ -115,11 +138,21 @@ export function ImagineScreen({
       </div>
 
       <div className="card__actions">
-        <button type="button" className="text-button" onClick={onBack}>
+        <button type="button" className="text-button" onClick={leave}>
           Back
         </button>
         <TactileButton type="submit">Plant this idea</TactileButton>
       </div>
+
+      <ConfirmDialog
+        open={confirming}
+        {...DISCARD_COPY}
+        onKeep={() => setConfirming(false)}
+        onConfirm={() => {
+          setConfirming(false)
+          onExit()
+        }}
+      />
     </form>
   )
 }

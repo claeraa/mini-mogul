@@ -1,25 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Progress, ThemeId } from '../lib/storage.ts'
+import { DISCARD_COPY, THEMES } from '../lib/constants.ts'
+import { CloseButton, ConfirmDialog } from './ConfirmDialog.tsx'
+import { ShopPreview } from './ShopPreview.tsx'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
+
+type ShopValues = { shopName: string; theme: ThemeId; offering: string }
 
 type CreateScreenProps = {
   progress: Progress
+  /** True when the idea being shaped has not been saved yet. */
+  unsavedDraft: boolean
+  /** Name of an already saved shop that saving this one would replace. */
+  replacesShop?: string
+  /** Back to the idea screen. */
   onBack: () => void
-  onHome: () => void
-  onSave: (values: {
-    shopName: string
-    theme: ThemeId
-    offering: string
-  }) => void
+  /** Leave for home, dropping whatever is unsaved. */
+  onExit: () => void
+  onPlay: () => void
+  onDirtyChange: (dirty: boolean) => void
+  onSave: (values: ShopValues) => void
 }
-
-const THEMES: { id: ThemeId; label: string; roof: string; trim: string }[] = [
-  { id: 'cottage', label: 'Cozy cottage', roof: '#f0705f', trim: '#ffd978' },
-  { id: 'forest', label: 'Enchanted forest', roof: '#3fa56b', trim: '#d6f58c' },
-  { id: 'seaside', label: 'Seaside', roof: '#2aa9c4', trim: '#ffe9c2' },
-  { id: 'starlight', label: 'Starlight', roof: '#7667d8', trim: '#ffd978' },
-]
 
 function suggestShopName(playerName: string, idea: string) {
   const words = idea
@@ -31,61 +33,61 @@ function suggestShopName(playerName: string, idea: string) {
   return (playerName ? `${playerName}'s ${words}` : words).slice(0, 40)
 }
 
-function ShopPreview({ theme, name }: { theme: ThemeId; name: string }) {
-  const { roof, trim } = THEMES.find((t) => t.id === theme) ?? THEMES[0]
-  return (
-    <figure className="shop-preview">
-      <svg viewBox="0 0 240 150" aria-hidden="true">
-        <ellipse cx="120" cy="134" rx="96" ry="12" fill="#6cc763" />
-        <rect x="62" y="62" width="116" height="74" rx="8" fill="#fff3dc" />
-        <path d="M150 62h20a8 8 0 0 1 8 8v58a8 8 0 0 1-8 8h-20z" fill="#efd6b6" />
-        <path
-          d="M52 66l68-52 68 52z"
-          fill={roof}
-          stroke={roof}
-          strokeWidth="10"
-          strokeLinejoin="round"
-        />
-        <circle cx="120" cy="46" r="12" fill="#fff3dc" />
-        <path
-          d="M120 38c1 5 3 7 8 8-5 1-7 3-8 8-1-5-3-7-8-8 5-1 7-3 8-8z"
-          fill={trim}
-          stroke="#e8a92a"
-          strokeWidth="0.800"
-        />
-        <rect x="74" y="92" width="44" height="28" rx="4" fill={trim} />
-        <path d="M96 92v28M74 106h44" stroke="#fff" strokeWidth="2" opacity="0.7" />
-        <path d="M70 78h52v10a6.500 6.500 0 0 1-13 0 6.500 6.500 0 0 1-13 0 6.500 6.500 0 0 1-13 0 6.500 6.500 0 0 1-13 0z" fill="#fff" />
-        <path d="M83 78h13v10a6.500 6.500 0 0 1-13 0zM109 78h13v10a6.500 6.500 0 0 1-13 0z" fill={roof} />
-        <path d="M134 136v-34a13 13 0 0 1 26 0v34z" fill={roof} />
-        <circle cx="153" cy="116" r="2.500" fill="#fff3dc" />
-      </svg>
-      <figcaption className="shop-preview__sign">
-        {name.trim() || 'Your shop name'}
-      </figcaption>
-    </figure>
-  )
-}
-
 export function CreateScreen({
   progress,
+  unsavedDraft,
+  replacesShop,
   onBack,
-  onHome,
+  onExit,
+  onPlay,
+  onDirtyChange,
   onSave,
 }: CreateScreenProps) {
-  const [shopName, setShopName] = useState(
-    progress.shopName || suggestShopName(progress.playerName, progress.idea),
-  )
-  const [theme, setTheme] = useState<ThemeId>(progress.theme)
-  const [offering, setOffering] = useState(progress.offering)
+  // What the form looked like when it was last opened or saved.
+  const [baseline, setBaseline] = useState<ShopValues>(() => ({
+    shopName:
+      progress.shopName || suggestShopName(progress.playerName, progress.idea),
+    theme: progress.theme,
+    offering: progress.offering,
+  }))
+  const [shopName, setShopName] = useState(baseline.shopName)
+  const [theme, setTheme] = useState<ThemeId>(baseline.theme)
+  const [offering, setOffering] = useState(baseline.offering)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState(progress.step !== 'ready')
+  const [leaving, setLeaving] = useState<'home' | 'back' | null>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
+
+  const fieldsChanged =
+    editing &&
+    (shopName !== baseline.shopName ||
+      theme !== baseline.theme ||
+      offering !== baseline.offering)
+  // Leaving for home also abandons a planted-but-unsaved idea.
+  const dirty = fieldsChanged || (editing && unsavedDraft)
 
   useEffect(() => {
     headingRef.current?.focus()
   }, [editing])
+
+  useEffect(() => {
+    onDirtyChange(dirty)
+    return () => onDirtyChange(false)
+  }, [dirty, onDirtyChange])
+
+  const finishLeaving = (target: 'home' | 'back') => {
+    setLeaving(null)
+    if (target === 'home') onExit()
+    else onBack()
+  }
+
+  const requestLeave = (target: 'home' | 'back') => {
+    // Going back keeps a planted idea; going home abandons it too.
+    const needsConfirm = target === 'home' ? dirty : fieldsChanged
+    if (needsConfirm) setLeaving(target)
+    else finishLeaving(target)
+  }
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -94,13 +96,22 @@ export function CreateScreen({
       nameRef.current?.focus()
       return
     }
-    onSave({ shopName: shopName.trim(), theme, offering: offering.trim() })
+    const saved = {
+      shopName: shopName.trim(),
+      theme,
+      offering: offering.trim(),
+    }
+    onSave(saved)
+    setBaseline(saved)
+    setShopName(saved.shopName)
+    setOffering(saved.offering)
     setEditing(false)
   }
 
   if (!editing) {
     return (
       <section className="card card--ready">
+        <CloseButton label="Close and return home" onClick={onExit} />
         <p className="card__step">
           <SparkIcon />
           Shop saved
@@ -122,19 +133,26 @@ export function CreateScreen({
           )}
         </dl>
         <p className="card__note">
-          Opening day, where you set prices and meet your first customers, is
-          the next part of Mini Mogul to be built. Your shop is saved on this
-          device until then.
+          Your shop is saved on this device. Open it to set a price, make your
+          first items and meet your customers.
         </p>
-        <div className="card__actions">
-          <button
-            type="button"
-            className="text-button"
-            onClick={() => setEditing(true)}
-          >
-            Edit shop
-          </button>
-          <TactileButton onClick={onHome}>Back to the island</TactileButton>
+        <div className="card__actions card__actions--stack">
+          <TactileButton size="large" onClick={onPlay}>
+            <SparkIcon />
+            Open Your Shop
+          </TactileButton>
+          <div className="card__links">
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setEditing(true)}
+            >
+              Edit shop
+            </button>
+            <button type="button" className="text-button" onClick={onExit}>
+              Back to the island
+            </button>
+          </div>
         </div>
       </section>
     )
@@ -142,6 +160,10 @@ export function CreateScreen({
 
   return (
     <form className="card" onSubmit={handleSubmit} noValidate>
+      <CloseButton
+        label="Close and return home"
+        onClick={() => requestLeave('home')}
+      />
       <p className="card__step">
         <SparkIcon />
         Create
@@ -218,12 +240,30 @@ export function CreateScreen({
         />
       </div>
 
+      {replacesShop && (
+        <p className="card__note card__note--warn">
+          You already have a saved shop, {replacesShop}. It stays safe unless
+          you save this one, which will replace it and start again from day 1.
+        </p>
+      )}
+
       <div className="card__actions">
-        <button type="button" className="text-button" onClick={onBack}>
+        <button
+          type="button"
+          className="text-button"
+          onClick={() => requestLeave('back')}
+        >
           Back
         </button>
         <TactileButton type="submit">Save my shop</TactileButton>
       </div>
+
+      <ConfirmDialog
+        open={leaving !== null}
+        {...DISCARD_COPY}
+        onKeep={() => setLeaving(null)}
+        onConfirm={() => leaving && finishLeaving(leaving)}
+      />
     </form>
   )
 }

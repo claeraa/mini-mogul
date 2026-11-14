@@ -5,9 +5,11 @@ import { AudioSettings } from './components/AudioSettings.tsx'
 import { CreateScreen } from './components/CreateScreen.tsx'
 import { HomeScene } from './components/HomeScene.tsx'
 import { ImagineScreen } from './components/ImagineScreen.tsx'
+import { PlayScreen } from './components/PlayScreen.tsx'
 import { initAudio, playSfx, setAudioPrefs } from './lib/audio.ts'
 import { useMediaQuery, usePointerParallax } from './lib/hooks.ts'
 import {
+  clearGame,
   loadProgress,
   loadSettings,
   saveProgress,
@@ -15,7 +17,7 @@ import {
 } from './lib/storage.ts'
 import type { Progress, Settings, ThemeId } from './lib/storage.ts'
 
-type Screen = 'home' | 'imagine' | 'create'
+type Screen = 'home' | 'imagine' | 'create' | 'play'
 
 /** How long the idea-star takes to reach the island before we move on. */
 const LAUNCH_MS = 900
@@ -31,12 +33,18 @@ function App() {
   const [screen, setScreen] = useState<Screen>('home')
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [progress, setProgress] = useState<Progress | null>(loadProgress)
+  // A new idea being shaped while a saved shop already exists. It lives only
+  // in memory, so the saved shop is untouched until "Save my shop".
+  const [draft, setDraft] = useState<Progress | null>(null)
   const [resuming, setResuming] = useState(false)
+  const [dirty, setDirty] = useState(false)
   const [launching, setLaunching] = useState(false)
   const [introDone, setIntroDone] = useState(false)
 
   const rootRef = useRef<HTMLDivElement>(null)
   const timers = useRef<number[]>([])
+
+  const working = draft ?? progress
 
   const systemReduced = useMediaQuery('(prefers-reduced-motion: reduce)')
   const reducedMotion = settings.reduceMotion ?? systemReduced
@@ -57,6 +65,14 @@ function App() {
     return () => pending.forEach((id) => window.clearTimeout(id))
   }, [])
 
+  // Closing or reloading the tab would also abandon unsaved edits.
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
+
   const changeSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((current) => {
       const next = { ...current, ...patch }
@@ -67,6 +83,7 @@ function App() {
 
   const go = (next: Screen) => {
     setIntroDone(true)
+    if (next === 'home') setDraft(null)
     setScreen(next)
     window.scrollTo(0, 0)
   }
@@ -74,6 +91,7 @@ function App() {
   const handleStart = () => {
     if (launching) return
     setResuming(false)
+    setDraft(null)
     playSfx('whoosh')
     if (reducedMotion) {
       go('imagine')
@@ -96,17 +114,23 @@ function App() {
   }
 
   const handleIdea = (values: { playerName: string; idea: string }) => {
-    const sameIdea = resuming && progress?.idea === values.idea
+    const base = resuming ? working : null
+    const sameIdea = base?.idea === values.idea
     const next: Progress = {
       step: 'create',
       playerName: values.playerName,
       idea: values.idea,
-      shopName: sameIdea ? progress.shopName : '',
-      theme: sameIdea ? progress.theme : 'cottage',
-      offering: sameIdea ? progress.offering : '',
+      shopName: sameIdea ? base.shopName : '',
+      theme: sameIdea ? base.theme : 'cottage',
+      offering: sameIdea ? base.offering : '',
     }
-    setProgress(next)
-    saveProgress(next)
+    if (progress?.step === 'ready') {
+      // Never overwrite a saved shop with a half-made one.
+      setDraft(next)
+    } else {
+      setProgress(next)
+      saveProgress(next)
+    }
     setResuming(true)
     playSfx('plop')
     go('create')
@@ -117,12 +141,20 @@ function App() {
     theme: ThemeId
     offering: string
   }) => {
-    if (!progress) return
-    const next: Progress = { ...progress, ...values, step: 'ready' }
+    if (!working) return
+    // A different business starts its opening days afresh.
+    if (progress?.step !== 'ready' || progress.idea !== working.idea) clearGame()
+    const next: Progress = { ...working, ...values, step: 'ready' }
     setProgress(next)
     saveProgress(next)
+    setDraft(null)
     playSfx('chime')
   }
+
+  const replacesShop =
+    draft && progress?.step === 'ready' && draft.idea !== progress.idea
+      ? progress.shopName
+      : undefined
 
   return (
     <MotionConfig reducedMotion={reducedMotion ? 'always' : 'never'}>
@@ -158,22 +190,37 @@ function App() {
           {screen === 'imagine' && (
             <motion.main key="imagine" className="screen screen--form" {...formMotion}>
               <ImagineScreen
-                initialName={resuming ? (progress?.playerName ?? '') : ''}
-                initialIdea={resuming ? (progress?.idea ?? '') : ''}
-                onBack={() => go('home')}
+                initialName={resuming ? (working?.playerName ?? '') : ''}
+                initialIdea={resuming ? (working?.idea ?? '') : ''}
+                unsavedDraft={draft !== null}
+                onExit={() => go('home')}
+                onDirtyChange={setDirty}
                 onSubmit={handleIdea}
               />
             </motion.main>
           )}
 
-          {screen === 'create' && progress && (
+          {screen === 'create' && working && (
             <motion.main key="create" className="screen screen--form" {...formMotion}>
               <CreateScreen
-                progress={progress}
+                progress={working}
+                unsavedDraft={draft !== null}
+                replacesShop={replacesShop}
                 onBack={() => go('imagine')}
-                onHome={() => go('home')}
+                onExit={() => go('home')}
+                onPlay={() => {
+                  playSfx('plop')
+                  go('play')
+                }}
+                onDirtyChange={setDirty}
                 onSave={handleShop}
               />
+            </motion.main>
+          )}
+
+          {screen === 'play' && progress?.step === 'ready' && (
+            <motion.main key="play" className="screen screen--form" {...formMotion}>
+              <PlayScreen shop={progress} onExit={() => go('home')} />
             </motion.main>
           )}
         </AnimatePresence>

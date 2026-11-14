@@ -8,7 +8,7 @@ type AudioSettingsProps = {
   onChange: (patch: Partial<Settings>) => void
 }
 
-function Switch({
+export function Switch({
   label,
   hint,
   checked,
