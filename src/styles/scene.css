@@ -762,3 +762,40 @@
   justify-content: center;
   gap: 10px;
 }
+
+/* What the game is, in one line, and a few examples that are only examples. */
+.home-pitch,
+.home-examples {
+  max-width: 30em;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 10px rgba(8, 40, 96, 0.8);
+}
+
+.home-pitch {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.050rem, 0.500vw + 0.950rem, 1.300rem);
+}
+
+.home-examples {
+  font-size: 0.950rem;
+  font-weight: 700;
+}
+
+.home-examples strong {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* On short or very narrow screens the island needs the room more than the
+   examples do; the same examples are on the very next screen. */
+@media (max-height: 700px), (max-width: 340px) {
+  .home-examples {
+    display: none;
+  }
+
+  .home-actions {
+    gap: 8px;
+  }
+}

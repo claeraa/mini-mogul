@@ -208,6 +208,12 @@ export function createAiHandler(provider: Provider | null, options: HandlerOptio
       ].join('\n'),
       schema: WorldReply,
     })
+    // The Director can also turn an idea away. That is told to the game as
+    // such, so it can offer the player other ideas instead of quietly
+    // building a different world under the same name.
+    if (typeof reply === 'object' && reply !== null && (reply as { kidSafe?: unknown }).kidSafe === false) {
+      throw new AiError('refused', 'the model marked the idea as unsuitable for children')
+    }
     const direction = parseWorldDirection(reply)
     if (!direction) throw new AiError('invalid_reply', worldDirectionProblems(reply).join(' | '))
     return { direction }

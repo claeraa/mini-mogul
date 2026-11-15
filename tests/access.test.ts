@@ -49,11 +49,11 @@ describe('accessibility preferences', () => {
 
   test('settings saved before these options existed still load', () => {
     const old = { sound: true, music: false, sfx: true, reduceMotion: true }
-    assert.deepEqual(parseSettings(old), { ...old, textSize: 'normal', highContrast: false })
+    assert.deepEqual(parseSettings(old), { ...old, textSize: 'normal', highContrast: false, guide: 'auto', improveSeen: false })
   })
 
   test('saved preferences survive a round trip', () => {
-    const mine = { sound: false, music: true, sfx: false, reduceMotion: false, textSize: 'larger' as const, highContrast: true }
+    const mine = { sound: false, music: true, sfx: false, reduceMotion: false, textSize: 'larger' as const, highContrast: true, guide: 'done' as const, improveSeen: true }
     assert.deepEqual(parseSettings(JSON.parse(JSON.stringify(mine))), mine)
   })
 

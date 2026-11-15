@@ -28,7 +28,10 @@ async function call(path: string, body?: unknown): Promise<Record<string, unknow
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: controller.signal,
     })
-    if (!response.ok) return null
+    if (!response.ok) {
+      // One refusal is worth telling apart: the idea itself was turned away.
+      return response.status === 422 ? { refused: true } : null
+    }
     const data: unknown = await response.json()
     return typeof data === 'object' && data !== null
       ? (data as Record<string, unknown>)
@@ -66,8 +69,12 @@ export function aiAvailable(): Promise<boolean> {
 
 // ---- Worlds -------------------------------------------------------------------
 
+/** The Director turned the idea away as not suitable for children. */
+export const UNSUITABLE_IDEA = 'unsuitable' as const
+
 /**
- * Asks the Director to imagine a world. Null means "use the built-in rules".
+ * Asks the Director to imagine a world. Null means "use the built-in rules";
+ * UNSUITABLE_IDEA means the player should be offered a different idea.
  * The reply belongs to the world that asked: the caller stores it in that
  * world's own save, and requests from different worlds are never shared.
  */
@@ -75,9 +82,10 @@ export function requestWorldDirection(
   worldId: string,
   idea: string,
   offering: string,
-): Promise<WorldDirection | null> {
+): Promise<WorldDirection | typeof UNSUITABLE_IDEA | null> {
   return once(`world:${worldId}|${ideaKey(idea)}|${offering.trim().toLowerCase()}`, async () => {
     const data = await call('world', { idea, offering })
+    if (data?.refused === true) return UNSUITABLE_IDEA
     return parseWorldDirection(data?.direction)
   })
 }

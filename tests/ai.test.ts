@@ -245,7 +245,8 @@ describe('AI endpoint', () => {
     const cases: [unknown | (() => Promise<unknown>), number, string][] = [
       [{ nonsense: true }, 502, 'invalid_reply'],
       [{ ...comet, structure: 'rocket' }, 502, 'invalid_reply'],
-      [{ ...comet, kidSafe: false }, 502, 'invalid_reply'],
+      // The Director turning an idea away is a refusal, so the game can offer other ideas.
+      [{ ...comet, kidSafe: false }, 422, 'refused'],
       [async () => { throw new AiError('timeout') }, 504, 'timeout'],
       [async () => { throw new AiError('refused') }, 422, 'refused'],
       [async () => { throw new AiError('auth') }, 502, 'auth'],

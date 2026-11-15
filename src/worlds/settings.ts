@@ -25,6 +25,10 @@ export type Settings = {
   textSize: TextSize
   /** Darker text, solid backgrounds and stronger outlines. */
   highContrast: boolean
+  /** The first-day guide: shown on a new world, replayed on request, or finished. */
+  guide: 'auto' | 'replay' | 'done'
+  /** The player has opened the Improve board, so it no longer says "New!". */
+  improveSeen: boolean
 }
 
 export const defaultSettings: Settings = {
@@ -34,6 +38,8 @@ export const defaultSettings: Settings = {
   reduceMotion: null,
   textSize: 'normal',
   highContrast: false,
+  guide: 'auto',
+  improveSeen: false,
 }
 
 /**
@@ -43,7 +49,7 @@ export const defaultSettings: Settings = {
  */
 export function parseSettings(value: unknown): Settings {
   const saved = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {}
-  const flag = (key: 'sound' | 'music' | 'sfx' | 'highContrast') =>
+  const flag = (key: 'sound' | 'music' | 'sfx' | 'highContrast' | 'improveSeen') =>
     typeof saved[key] === 'boolean' ? (saved[key] as boolean) : defaultSettings[key]
   return {
     sound: flag('sound'),
@@ -54,5 +60,7 @@ export function parseSettings(value: unknown): Settings {
       ? (saved.textSize as TextSize)
       : defaultSettings.textSize,
     highContrast: flag('highContrast'),
+    guide: saved.guide === 'replay' || saved.guide === 'done' ? saved.guide : 'auto',
+    improveSeen: flag('improveSeen'),
   }
 }

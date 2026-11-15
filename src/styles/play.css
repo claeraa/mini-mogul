@@ -1189,3 +1189,82 @@ button.sign:focus-visible,
     height: 26px;
   }
 }
+
+/* ---- The first-day guide ---------------------------------------------------- */
+
+.guide {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  color: #17325c;
+  background: #e8f4ff;
+  box-shadow: inset 0 0 0 2px #9cc7ee;
+}
+
+.guide__count {
+  font-size: 0.760rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #2a5fa8;
+}
+
+.guide__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.150rem;
+  line-height: 1.25;
+}
+
+.guide__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 4px;
+}
+
+/* The control a tip is about gets a soft ring. It is a pointer, not a lock:
+   every other control still works. */
+/* Both ways of doing it are ringed: the tile on the plan board and the
+   matching thing in the world. */
+.card--game[data-guide='make'] .tile:nth-child(2),
+.card--game[data-guide='make'] .hotspot__badge,
+.card--game[data-guide='price'] .tile:nth-child(1),
+.card--game[data-guide='price'] .sign--price,
+.card--game[data-guide='open'] .mgmt__actions .tactile {
+  outline: 4px solid #4aa3ff;
+  outline-offset: 3px;
+  animation: guide-ring 1.400s ease-in-out infinite;
+}
+
+@keyframes guide-ring {
+  50% {
+    outline-offset: 7px;
+    outline-color: #9cc7ee;
+  }
+}
+
+.new-tag {
+  padding: 0.050em 0.500em;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 0.720rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: #d6497f;
+}
+
+.app[data-contrast='high'] .guide {
+  color: var(--ink);
+  background: #ffffff;
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.app[data-contrast='high'] .guide__count {
+  color: var(--ink-soft);
+}

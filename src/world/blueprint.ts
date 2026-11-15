@@ -355,7 +355,8 @@ const ICON_WORDS: [ProductIconId, string[]][] = [
 
 const NIGHT_WORDS = [
   'moon*', 'night*', 'midnight', 'star', 'starry', 'starlight', 'dream*',
-  'twilight', 'lunar', 'sleepy', 'bedtime',
+  'twilight', 'lunar', 'sleepy', 'bedtime', 'space', 'galaxy', 'rocket',
+  'planet', 'comet', 'alien', 'astronaut',
 ]
 
 const MAGIC_WORDS = [

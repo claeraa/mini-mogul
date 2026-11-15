@@ -8,7 +8,7 @@ import { HomeScene } from './components/HomeScene.tsx'
 import { ImagineScreen } from './components/ImagineScreen.tsx'
 import { PlayScreen } from './components/PlayScreen.tsx'
 import { WorldsScreen } from './components/WorldsScreen.tsx'
-import { aiAvailable, requestWorldDirection } from './lib/ai.ts'
+import { UNSUITABLE_IDEA, aiAvailable, requestWorldDirection } from './lib/ai.ts'
 import { initAudio, playSfx, setAudioPrefs, unlockAudio } from './lib/audio.ts'
 import { useMediaQuery, usePointerParallax } from './lib/hooks.ts'
 import {
@@ -98,9 +98,21 @@ function App() {
    * Asks the Director to imagine a world. The answer is stored in the world
    * that asked and nowhere else; a failure just leaves the rules-built world.
    */
+  /** The AI Director declined the last idea; the idea screen offers others. */
+  const [turnedAway, setTurnedAway] = useState(false)
+
   const imagine = useCallback((worldId: string, idea: string, offering: string) => {
     setAiBusy({ key: worldId, state: 'thinking' })
-    requestWorldDirection(worldId, idea, offering).then((direction) => {
+    requestWorldDirection(worldId, idea, offering).then((reply) => {
+      if (reply === UNSUITABLE_IDEA) {
+        // The Director turned the idea away: back to the idea screen, which
+        // offers others. The world is not built under the old idea.
+        setAiBusy((current) => (current?.key === worldId ? null : current))
+        setTurnedAway(true)
+        setScreen((current) => (current === 'create' ? 'imagine' : current))
+        return
+      }
+      const direction = reply
       if (direction) {
         // Only if the world still has the idea that was asked about.
         const apply = (world: SavedWorld): SavedWorld =>
@@ -231,6 +243,7 @@ function App() {
 
   const handleIdea = (values: { playerName: string; idea: string }) => {
     const now = Date.now()
+    setTurnedAway(false)
     if (editingExisting) {
       // The same world keeps its id, name, style and game days. If the idea
       // itself changed, the old AI reading no longer fits and is dropped.
@@ -376,6 +389,7 @@ function App() {
                 initialIdea={resuming ? (working?.shop.idea ?? '') : ''}
                 unsavedDraft={draft !== null}
                 editingSaved={editingSaved}
+                turnedAway={turnedAway}
                 onExit={() => go(returnTo)}
                 onDirtyChange={setDirty}
                 onSubmit={handleIdea}
@@ -421,6 +435,9 @@ function App() {
                 }
                 aiOn={aiOn}
                 reducedMotion={reducedMotion}
+                guideMode={settings.guide}
+                improveSeen={settings.improveSeen}
+                onPrefs={changeSettings}
                 onExit={() => go('worlds')}
               />
             </motion.main>

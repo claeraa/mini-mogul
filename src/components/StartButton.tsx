@@ -58,7 +58,7 @@ export function StartButton({
   return (
     <TactileButton size="large" onClick={onClick} disabled={disabled}>
       <SparkIcon />
-      Start Imagining
+      Create My Business
     </TactileButton>
   )
 }

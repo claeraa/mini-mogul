@@ -21,6 +21,7 @@ import type {
   WorldThemeId,
 } from '../world/blueprint.ts'
 import { CUSTOMER_CASTS } from '../world/customers.ts'
+import { isSuitable } from './safety.ts'
 import type { CustomerCastId } from '../world/customers.ts'
 
 export { CUSTOMER_CASTS }
@@ -192,7 +193,7 @@ export function textProblem(value: unknown, max: number): string | null {
   if (text.length > max) return `too long (${text.length} characters, limit ${max})`
   // No markup, links or contact details; this is display text only.
   if (/[<>{}\\]|https?:|www\.|@/i.test(text)) return 'contains markup, a link or an address'
-  if (UNSUITABLE.test(text)) return 'contains a word that is not allowed in a children\'s game'
+  if (UNSUITABLE.test(text) || !isSuitable(text)) return 'contains a word that is not allowed in a children\'s game'
   return null
 }
 
@@ -492,5 +493,8 @@ export function parseWorldRequest(
   if (idea.length < 3 || idea.length > LIMITS.idea || offering.length > LIMITS.offering) {
     return null
   }
+  // The same check the idea screen makes. An unsuitable idea is turned
+  // around before it is ever sent to the AI.
+  if (!isSuitable(idea) || !isSuitable(offering)) return null
   return { idea, offering }
 }

@@ -54,7 +54,7 @@ export function HomeScene({
     <div className="home" data-intro={intro ? 'first' : 'return'}>
       <header className="home-brand enter enter--logo">
         <h1 className="logo">Mini Mogul</h1>
-        <p className="tagline">Imagine it. Build it. Grow it.</p>
+        <p className="tagline">Dream it. Build it. Run it!</p>
       </header>
 
       <div className="island-slot" aria-hidden="true">
@@ -73,7 +73,14 @@ export function HomeScene({
       </div>
 
       <div className="home-actions enter enter--cta">
+        <p className="home-pitch">Invent any business. Then run it yourself!</p>
         <StartButton onClick={onStart} disabled={launching} />
+        {worldCount === 0 && (
+          <p className="home-examples">
+            A unicorn bakery? A dragon daycare? A space café?
+            <strong> Or anything you dream up!</strong>
+          </p>
+        )}
         {(continueName !== null || worldCount > 0) && (
           <div className="home-actions__row">
             {continueName !== null && (

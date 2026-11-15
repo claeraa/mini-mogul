@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { CONCEPTS } from '../ai/schema.ts'
 import type { WorldDirection } from '../ai/schema.ts'
+import { checkIdea } from '../ai/safety.ts'
 import { buildWorld } from '../ai/world.ts'
 import type { World } from '../ai/world.ts'
 import type { Progress, ThemeId } from '../lib/storage.ts'
@@ -173,6 +174,7 @@ export function CreateScreen({
   const [theme, setTheme] = useState<ThemeId>(baseline.theme)
   const [offering, setOffering] = useState(baseline.offering)
   const [error, setError] = useState('')
+  const [offeringError, setOfferingError] = useState('')
   const [editing, setEditing] = useState(startEditing || progress.step !== 'ready')
   const [leaving, setLeaving] = useState<'home' | 'back' | null>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -224,6 +226,17 @@ export function CreateScreen({
     if (!shopName.trim()) {
       setError('Your shop needs a name!')
       nameRef.current?.focus()
+      return
+    }
+    // A shop's name and its first product are held to the same standard as
+    // the idea itself, so no world ends up with an unsuitable sign.
+    if (!checkIdea(shopName).ok) {
+      setError("Let's pick a different name. This one isn't right for Mini Mogul.")
+      nameRef.current?.focus()
+      return
+    }
+    if (!checkIdea(offering).ok) {
+      setOfferingError("Let's pick something else to sell.")
       return
     }
     const saved = {
@@ -379,8 +392,17 @@ export function CreateScreen({
           maxLength={50}
           placeholder="Cloud cupcakes, dragon naps, dog walks…"
           value={offering}
-          onChange={(event) => setOffering(event.target.value)}
+          aria-invalid={offeringError ? true : undefined}
+          onChange={(event) => {
+            setOffering(event.target.value)
+            if (offeringError) setOfferingError('')
+          }}
         />
+        {offeringError && (
+          <p className="field__help field__help--error" role="alert">
+            {offeringError}
+          </p>
+        )}
       </div>
 
       <div className="card__actions">

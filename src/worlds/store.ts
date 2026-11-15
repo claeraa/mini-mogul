@@ -1,5 +1,6 @@
 import { parseWorldDirection } from '../ai/schema.ts'
 import type { WorldDirection } from '../ai/schema.ts'
+import { SAFE_IDEA, isSuitable } from '../ai/safety.ts'
 import { ideaKey } from '../ai/world.ts'
 import { parseGame } from '../game/state.ts'
 import type { GameState } from '../game/state.ts'
@@ -76,15 +77,21 @@ const text = (value: unknown, max: number) =>
 /** A usable shop, or null if there is no idea to build on. */
 export function parseShop(value: unknown): Shop | null {
   if (!isRecord(value)) return null
-  const idea = text(value.idea, 200).trim()
-  if (!idea) return null
+  const savedIdea = text(value.idea, 200).trim()
+  if (!savedIdea) return null
+  // A world saved before the idea check existed may hold an idea, name or
+  // product that is not for children. The world and its progress are kept;
+  // only those words are replaced, so nothing unsuitable is shown again.
+  const idea = isSuitable(savedIdea) ? savedIdea : SAFE_IDEA
+  const savedName = text(value.shopName, 80)
+  const savedOffering = text(value.offering, 80)
   return {
     step: value.step === 'ready' ? 'ready' : 'create',
     playerName: text(value.playerName, 60),
     idea,
-    shopName: text(value.shopName, 80),
+    shopName: isSuitable(savedName) ? savedName : savedName ? SAFE_IDEA : '',
     theme: STYLES.includes(value.theme as StyleId) ? (value.theme as StyleId) : 'cottage',
-    offering: text(value.offering, 80),
+    offering: isSuitable(savedOffering) ? savedOffering : '',
   }
 }
 
@@ -99,7 +106,12 @@ function parseWorld(value: unknown): SavedWorld | null {
     updatedAt: time(value.updatedAt),
     shop,
     // A damaged world or game is dropped on its own; the shop still opens.
-    direction: parseWorldDirection(value.direction),
+    // An AI world imagined for an idea that has since been replaced no
+    // longer fits, and is not shown.
+    direction:
+      isRecord(value.shop) && isSuitable(text(value.shop.idea, 200))
+        ? parseWorldDirection(value.direction)
+        : null,
     game: parseGame(value.game),
   }
 }

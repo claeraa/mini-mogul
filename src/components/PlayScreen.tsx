@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { guideCard, guideWanted, improveUnlocked, nextGuideStep, reportNote } from '../game/guide.ts'
+import type { GuideMode, GuideStep } from '../game/guide.ts'
 import { PRODUCT_SHOP } from '../game/model.ts'
 import type { DecorationId, WorldBlueprint } from '../world/blueprint.ts'
 import { buyCampaign, buyUpgrade, extrasOf, makeLimit, modelForGame, modelForResult, simulateShopDay } from '../game/upgrades.ts'
@@ -17,6 +19,7 @@ import { playSfx } from '../lib/audio.ts'
 import type { Progress } from '../lib/storage.ts'
 import type { WorldDirection } from '../ai/schema.ts'
 import { buildWorld } from '../ai/world.ts'
+import { castLabel } from '../world/customers.ts'
 import { offeringName, shorten } from '../world/names.ts'
 import { MAX_STAGE_VISITORS, crowdNote, shelfDuring, stageVisitors } from '../world/stage.ts'
 import { Switch } from './AudioSettings.tsx'
@@ -51,6 +54,11 @@ type PlayScreenProps = {
   aiOn: boolean
   /** Skips the customers' walk-through and goes straight to the report. */
   reducedMotion: boolean
+  /** The player's guide preference, saved with their settings, not with the world. */
+  guideMode: GuideMode
+  /** Whether the Improve board has been opened before on this device. */
+  improveSeen: boolean
+  onPrefs: (patch: { guide?: GuideMode; improveSeen?: boolean }) => void
   onExit: () => void
 }
 
@@ -119,6 +127,9 @@ export function PlayScreen({
   direction,
   aiOn,
   reducedMotion,
+  guideMode,
+  improveSeen,
+  onPrefs,
   onExit,
 }: PlayScreenProps) {
   const [game, setGame] = useState<GameState>(() => savedGame ?? freshGame())
@@ -128,13 +139,28 @@ export function PlayScreen({
     clampPlan(modelForGame(base, game), game, game.lastPlan),
   )
   const [improving, setImproving] = useState(false)
+  // The first-day guide: which tip is showing, or null when there is none.
+  // Decided once when the screen opens, so it never pops up mid-day.
+  const [guideStep, setGuideStep] = useState<GuideStep | null>(() =>
+    guideWanted(guideMode, game) ? 'make' : null,
+  )
+  /** Shown once on the report that follows a guided day. */
+  const [guideOnReport, setGuideOnReport] = useState(false)
+  const finishGuide = () => {
+    setGuideStep(null)
+    setGuideOnReport(false)
+    onPrefs({ guide: 'done' })
+  }
   const [phase, setPhase] = useState<Phase>('plan')
   const [result, setResult] = useState<DayResult | null>(null)
   /** On-screen sales so far while the shop is open. */
   const [served, setServed] = useState(0)
   const [confirmRestart, setConfirmRestart] = useState(false)
   /** Which control is showing on the plan board. Price first: it is step one. */
-  const [control, setControl] = useState<Control | null>('price')
+  // With the guide on, nothing is open yet: the first tip says where to tap.
+  const [control, setControl] = useState<Control | null>(() =>
+    guideWanted(guideMode, game) ? null : 'price',
+  )
   const panelRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const skipRef = useRef<HTMLButtonElement>(null)
@@ -185,8 +211,12 @@ export function PlayScreen({
   const product = shorten(offeringName(shop.offering), 32) || blueprint.label
   const yesterday = game.history.at(-1)
 
-  const update = (patch: Partial<DayPlan>) =>
+  const update = (patch: Partial<DayPlan>) => {
     setPlan((current) => clampPlan(model, game, { ...current, ...patch }))
+    // Doing the thing a tip describes moves the guide on by itself.
+    if (guideStep === 'make' && patch.produce !== undefined) setGuideStep('price')
+    if (guideStep === 'price' && patch.priceCents !== undefined) setGuideStep('open')
+  }
 
   const making = makeLimit(model, game, plan.flyers)
   const makeMax = making.limit
@@ -246,6 +276,10 @@ export function PlayScreen({
     setGame(next)
     onGameChange(next)
     setResult(today)
+    if (guideStep !== null) {
+      setGuideStep(null)
+      setGuideOnReport(true)
+    }
     setOpenRoom(room)
     setServed(0)
     if (reducedMotion) {
@@ -296,7 +330,12 @@ export function PlayScreen({
         reducedMotion={reducedMotion}
         shop={{ worldId, idea: shop.idea, offering: shop.offering }}
         aiOn={aiOn}
-        onNextDay={planNextDay}
+        guideNote={guideOnReport ? reportNote(result.operatingProfitCents) : null}
+        onGuideDone={finishGuide}
+        onNextDay={() => {
+          if (guideOnReport) finishGuide()
+          planNextDay()
+        }}
         onExit={onExit}
       />
     )
@@ -308,6 +347,20 @@ export function PlayScreen({
   // the scene can already draw.
   const scene = dressedUp(blueprint, levels.shop)
   const upgradeCount = levels.production + levels.shop
+  // Improve waits until the player has seen cash and profit at work, and is
+  // never shown while the first-day guide is teaching the basics.
+  const canImprove = improveUnlocked(game) && guideStep === null
+  const card = guideStep
+    ? guideCard(guideStep, {
+        product: offeringName(shop.offering),
+        customers: castLabel(blueprint.customers, shop.idea),
+      })
+    : null
+  const openImprove = () => {
+    setImproving(true)
+    if (!improveSeen) onPrefs({ improveSeen: true })
+    playSfx('plop')
+  }
   const cast = open
     ? stageVisitors(result.demand, result.sold, openRoom)
     : stageVisitors(expected, expected, room)
@@ -320,6 +373,7 @@ export function PlayScreen({
   return (
     <section
       className="card card--play card--game"
+      data-guide={guideStep ?? undefined}
       style={
         {
           '--w-accent': blueprint.colors.accent,
@@ -338,6 +392,30 @@ export function PlayScreen({
           {shop.shopName}
         </h1>
       </header>
+
+      {card && (
+        <aside className="guide" aria-label="First-day guide" aria-live="polite">
+          <p className="guide__count">Tip {card.count}</p>
+          <p className="guide__title">{card.title}</p>
+          <p>{card.body}</p>
+          <div className="guide__actions">
+            <button
+              type="button"
+              className="chip"
+              onClick={() => {
+                const next = nextGuideStep(card.step)
+                if (next) setGuideStep(next)
+                else finishGuide()
+              }}
+            >
+              {nextGuideStep(card.step) ? 'Next tip' : 'Got it'}
+            </button>
+            <button type="button" className="text-button" onClick={finishGuide}>
+              Skip tips
+            </button>
+          </div>
+        </aside>
+      )}
 
       <div className="play-grid">
         <div className="play-stage">
@@ -371,22 +449,22 @@ export function PlayScreen({
             overlay={
               !open && (
                 <>
+                {canImprove && (
                 <button
                   type="button"
                   className="hotspot hotspot--improve"
-                  aria-label={`Improve your shop. ${upgradeCount} of ${UPGRADE_SLOTS} upgrades bought`}
+                  aria-label={`${improveSeen ? '' : 'New! '}Improve your shop. ${upgradeCount} of ${UPGRADE_SLOTS} upgrades bought`}
                   aria-haspopup="dialog"
-                  onClick={() => {
-                    setImproving(true)
-                    playSfx('plop')
-                  }}
+                  onClick={openImprove}
                 >
                   <span className="improve-sign">
                     <ToolboxIcon />
                     <span className="improve-sign__word">Improve</span>
                     {upgradeCount > 0 && <span className="improve-sign__stars">{'★'.repeat(upgradeCount)}</span>}
+                    {!improveSeen && <span className="new-tag">New!</span>}
                   </span>
                 </button>
+                )}
                 <button
                   type="button"
                   className="hotspot hotspot--workshop"
@@ -480,6 +558,7 @@ export function PlayScreen({
         ) : (
           <div className="mgmt" ref={panelRef}>
             <h2 className="mgmt__title">Today's plan</h2>
+
 
             <div className="toolbar" role="group" aria-label="What would you like to change?">
               <ToolTile
@@ -593,18 +672,13 @@ export function PlayScreen({
             )}
 
             <div className="mgmt__actions">
-              <button
-                type="button"
-                className="improve-button"
-                aria-haspopup="dialog"
-                onClick={() => {
-                  setImproving(true)
-                  playSfx('plop')
-                }}
-              >
-                <ToolboxIcon />
-                Improve your shop
-              </button>
+              {canImprove && (
+                <button type="button" className="improve-button" aria-haspopup="dialog" onClick={openImprove}>
+                  <ToolboxIcon />
+                  Improve your shop
+                  {!improveSeen && <span className="new-tag">New!</span>}
+                </button>
+              )}
               <TactileButton size="large" onClick={openForBusiness} disabled={toSell === 0}>
                 <BellIcon />
                 Open for Business

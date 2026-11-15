@@ -30,6 +30,9 @@ type DayReportProps = {
   /** Sent to the AI coach along with the day's numbers. Never the player's name. */
   shop: { worldId: string; idea: string; offering: string }
   aiOn: boolean
+  /** One sentence for a first-time player's first report, or null. */
+  guideNote?: string | null
+  onGuideDone?: () => void
   onNextDay: () => void
   onExit: () => void
 }
@@ -188,6 +191,8 @@ export function DayReport({
   reducedMotion,
   shop,
   aiOn,
+  guideNote = null,
+  onGuideDone,
   onNextDay,
   onExit,
 }: DayReportProps) {
@@ -290,6 +295,17 @@ export function DayReport({
           )}
         </p>
       </div>
+
+      {guideNote && (
+        <aside className="guide" aria-label="First-day guide">
+          <p className="guide__title">{guideNote}</p>
+          <div className="guide__actions">
+            <button type="button" className="chip" onClick={onGuideDone}>
+              Got it
+            </button>
+          </div>
+        </aside>
+      )}
 
       <div className="score" role="group" aria-label="Today at a glance">
         <motion.p

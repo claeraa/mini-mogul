@@ -207,6 +207,22 @@ export function AudioSettings({
               checked={settings.highContrast}
               onToggle={() => onChange({ highContrast: !settings.highContrast })}
             />
+            <div className="setting-row">
+              <span>
+                <span className="setting-row__label">First-day guide</span>
+                <span className="setting-row__hint" role="status">
+                  {settings.guide === 'replay' ? 'It will show when you plan a day.' : 'Three quick tips for running a shop.'}
+                </span>
+              </span>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => onChange({ guide: 'replay' })}
+                disabled={settings.guide === 'replay'}
+              >
+                Show again
+              </button>
+            </div>
             <Switch
               label="Reduce motion"
               hint="Calms the floating, drifting and zooming."
