@@ -94,6 +94,7 @@ export function requestCoaching(
   return once(`coach:${worldId}|${ideaKey(shop.idea)}|${JSON.stringify(result)}`, async () => {
     const data = await call('coach', { ...about, result })
     // The same number check the server ran, against this device's own figures.
-    return parseCoaching(data?.coaching, coachFacts(model, result).allowed)
+    const facts = coachFacts(model, result)
+    return parseCoaching(data?.coaching, facts.allowed, facts.outcome)
   })
 }

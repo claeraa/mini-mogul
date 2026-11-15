@@ -4,7 +4,14 @@ import { AiError, createAiHandler } from '../server/director.ts'
 import type { Provider } from '../server/director.ts'
 import { createAiEndpoint } from '../server/http.ts'
 import { createAnthropicProvider } from '../server/provider.ts'
-import { numbersIn, parseCoaching, parseWorldDirection } from '../src/ai/schema.ts'
+import {
+  LIMITS,
+  fitText,
+  numbersIn,
+  parseCoaching,
+  parseWorldDirection,
+  worldDirectionProblems,
+} from '../src/ai/schema.ts'
 import type { WorldDirection } from '../src/ai/schema.ts'
 import { buildWorld } from '../src/ai/world.ts'
 import { coachFacts, dayOutcome, fallbackCoaching, verifyDayResult } from '../src/game/coach.ts'
@@ -310,5 +317,86 @@ describe('switching the AI on for a server', () => {
     assert.equal(endpoint.summary.includes('test-key-not-real'), false)
     const other = createAiEndpoint({ AI_DIRECTOR: 'on', ANTHROPIC_API_KEY: 'k', AI_MODEL: 'claude-sonnet-5-5' })
     assert.match(other.summary, /claude-sonnet-5-5/)
+  })
+})
+
+describe('a reply that runs a little long (live failure: "customers" was 88 characters)', () => {
+  // The shape of the first real reply from Claude Haiku 5.5, for "High-end
+  // fashion boutique". Everything was valid except one line over its length.
+  const boutique = {
+    kidSafe: true,
+    summary: 'A bright little boutique where new outfits are dreamed up, sewn and shared with friends who love to dress up.',
+    label: 'Dressing Room Boutique',
+    theme: 'general-store', kind: 'product', structure: 'stall', biome: 'park', timeOfDay: 'day',
+    props: ['crate', 'lantern', 'yarnBasket'], decorations: ['bunting', 'sparkles', 'hearts'],
+    productIcon: 'gift', wallColor: 'blush', accentColor: 'magenta',
+    customers: 'Fashion-loving friends, families and young designers who want something special to wear.',
+    reactions: ['So stylish!', 'I love it!', 'Can I try it on?', 'Perfect for a party!'],
+    offerings: ['Sparkly party dresses', 'Cosy knitted scarves', 'Hats with bright ribbons'],
+    concepts: [
+      { id: 'pricing', why: 'Setting a fair price for each special outfit helps the boutique cover the cost of its fabric and time.' },
+      { id: 'marketing', why: 'Showing off beautiful designs to friends helps more people discover the boutique.' },
+    ],
+  }
+
+  test('the real reply is accepted and becomes an AI world', () => {
+    assert.equal(boutique.customers.length, 88)
+    const direction = parseWorldDirection(boutique)
+    assert.ok(direction)
+    assert.equal(direction.customers, boutique.customers)
+    assert.deepEqual(worldDirectionProblems(boutique), [])
+    const world = buildWorld({ idea: 'High-end fashion boutique', offering: '', style: 'cottage' }, direction)
+    assert.equal(world.source, 'ai')
+    assert.equal(world.blueprint.label, 'Dressing Room Boutique')
+  })
+
+  test('over-long descriptions are shortened at a word or sentence, not rejected', () => {
+    const long = `${boutique.customers} They also bring their grandparents, cousins and neighbours along.`
+    const direction = parseWorldDirection({ ...boutique, customers: long, label: 'The Very Grand Dressing Room Boutique Palace' })
+    assert.ok(direction)
+    assert.equal(direction.customers, boutique.customers) // the whole first sentence
+    assert.ok(direction.label.length <= LIMITS.label)
+    assert.equal(direction.label, 'The Very Grand Dressing Room…')
+
+    assert.equal(fitText('one two three four five six seven', 20), 'one two three four…')
+    assert.equal(fitText('short', 20), 'short')
+    for (const [text, max] of [['a'.repeat(30), 20], ['word '.repeat(40), 30]] as const) {
+      const fitted = fitText(text, max)
+      assert.ok(fitted === null || fitted.length <= max)
+    }
+  })
+
+  test('only length is relaxed: safety checks still apply to the whole text', () => {
+    const filler = 'Friendly visitors from all over town who love bright colours and soft fabrics and'
+    // An unsuitable word in the part that would have been cut off.
+    assert.equal(parseWorldDirection({ ...boutique, customers: `${filler} lots of shopping, then wine` }), null)
+    assert.equal(parseWorldDirection({ ...boutique, customers: `${filler} lots of shopping at www.example.com` }), null)
+    assert.equal(parseWorldDirection({ ...boutique, kidSafe: false }), null)
+    // Far too long is not a near miss.
+    assert.equal(parseWorldDirection({ ...boutique, customers: 'so many friends '.repeat(40) }), null)
+    // Speech bubbles are never shortened; a long one is dropped on its own.
+    const direction = parseWorldDirection({ ...boutique, reactions: [...boutique.reactions, 'This one is far too long to fit in a bubble'] })
+    assert.deepEqual(direction?.reactions, boutique.reactions)
+  })
+
+  test('the development log names the field and the rule, never the text', async () => {
+    const bad = { ...boutique, customers: 'x '.repeat(200), structure: 'castle' }
+    const lines: string[] = []
+    const provider: Provider = { name: 'fake', model: 'fake', complete: async () => bad }
+    const debug = createAiHandler(provider, { debug: true, log: (m) => lines.push(m) })
+    const quiet = createAiHandler(provider, { log: (m) => lines.push(m) })
+    const body = { idea: 'Secret idea words', offering: '' }
+    const reply = await debug('POST', 'world', body)
+    await quiet('POST', 'world', body)
+
+    assert.deepEqual(reply.body, { error: 'invalid_reply' }) // the browser is told nothing more
+    assert.match(lines[0], /customers: too long \(\d+ characters, limit \d+\)/)
+    assert.match(lines[0], /structure: not one of the game's choices/)
+    assert.equal(lines[1], '[ai-director] world failed: invalid_reply')
+    for (const line of lines) {
+      assert.equal(line.includes('Secret idea'), false)
+      assert.equal(line.includes('castle'), false)
+      assert.equal(line.includes('x x x'), false)
+    }
   })
 })

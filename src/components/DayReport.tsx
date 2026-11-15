@@ -1,15 +1,19 @@
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { Coaching } from '../ai/schema.ts'
 import { fallbackCoaching } from '../game/coach.ts'
 import type { BusinessModel, DayResult } from '../game/model.ts'
 import { formatMoney, formatSigned } from '../game/money.ts'
+import { dayMood, reportFaces, reportTitle } from '../game/mood.ts'
+import type { DayMood } from '../game/mood.ts'
 import { summarizeDay } from '../game/report.ts'
 import type { ReportLine } from '../game/report.ts'
 import { eventById } from '../game/simulation.ts'
 import { requestCoaching } from '../lib/ai.ts'
 import type { ProductIconId } from '../world/blueprint.ts'
+import type { CustomerCastId } from '../world/customers.ts'
+import { Critter } from './Critter.tsx'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
 import { ProductIcon } from './WorldParts.tsx'
 
@@ -18,6 +22,10 @@ type DayReportProps = {
   result: DayResult
   shopName: string
   icon: ProductIconId
+  /** The world's customers, who cheer (or not) on the report. */
+  cast: CustomerCastId
+  /** No confetti, coins or bouncing when the player has asked for less motion. */
+  reducedMotion: boolean
   /** Sent to the AI coach along with the day's numbers. Never the player's name. */
   shop: { worldId: string; idea: string; offering: string }
   aiOn: boolean
@@ -29,6 +37,12 @@ const plural = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`
 
 const SHELF_ICONS = 24
+
+/** "Challenge: serve everyone." becomes "Serve everyone." under a Mission tag. */
+function missionText(challenge: string) {
+  const text = challenge.replace(/^\s*(challenge|mission)\s*[:!-]\s*/i, '').trim()
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
 
 function Lines({
   heading,
@@ -101,6 +115,65 @@ function Book({
   )
 }
 
+const CONFETTI = ['#ff8fb8', '#ffd066', '#6fb7e8', '#8fd6a0', '#b79cf0', '#ff9a76']
+
+/**
+ * A short burst of feedback behind the headline, chosen by how the day went:
+ * confetti for a great day, popping coins for a profit, a few soft sparkles
+ * for an okay day, and nothing at all on a tough one. Decoration only: it is
+ * hidden from screen readers and is not drawn when motion is reduced.
+ */
+function Celebration({ mood }: { mood: DayMood }) {
+  if (mood === 'tough') return null
+  const count = mood === 'great' ? 22 : mood === 'good' ? 7 : 4
+  return (
+    <div className={`celebrate celebrate--${mood}`} aria-hidden="true">
+      {Array.from({ length: count }, (_, i) => {
+        // Spread evenly, then nudged, so the burst looks scattered but is
+        // the same every time.
+        const left = ((i + 0.5) / count) * 100 + ((i * 37) % 9) - 4
+        const style = {
+          left: `${Math.min(97, Math.max(3, left))}%`,
+          '--delay': `${((i * 53) % 10) * 0.07}s`,
+          '--spin': `${((i * 71) % 5) * 90 - 180}deg`,
+          '--drift': `${((i * 29) % 7) * 6 - 18}px`,
+          background: mood === 'great' ? CONFETTI[i % CONFETTI.length] : undefined,
+        } as CSSProperties
+        return mood === 'great' ? (
+          <span key={i} className={i % 3 === 0 ? 'celebrate__bit celebrate__bit--round' : 'celebrate__bit'} style={style} />
+        ) : mood === 'good' ? (
+          <span key={i} className="celebrate__coin coin" style={style} />
+        ) : (
+          <span key={i} className="celebrate__spark" style={style}>
+            <SparkIcon />
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+/** A target, for the coach's optional mission. */
+function TargetIcon() {
+  return (
+    <svg className="mission__icon" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" fill="#ff8f6b" />
+      <circle cx="12" cy="12" r="6.500" fill="#fff" />
+      <circle cx="12" cy="12" r="3" fill="#ff8f6b" />
+    </svg>
+  )
+}
+
+/** A light bulb, for the coach's tip. */
+function BulbIcon() {
+  return (
+    <svg className="coach__icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2.500a7 7 0 0 0-4 12.700V18h8v-2.800A7 7 0 0 0 12 2.500z" fill="#ffd94a" stroke="#d99a1c" strokeWidth="1.200" />
+      <rect x="8.500" y="18.500" width="7" height="3" rx="1.200" fill="#8a7f9c" />
+    </svg>
+  )
+}
+
 /**
  * The end-of-day story. Profit, cash and the shelf each get their own
  * "book", then a short note explains why profit and cash can differ.
@@ -110,6 +183,8 @@ export function DayReport({
   result: r,
   shopName,
   icon,
+  cast,
+  reducedMotion,
   shop,
   aiOn,
   onNextDay,
@@ -145,7 +220,14 @@ export function DayReport({
   const cashChange = s.cashChangeCents
   const shelfGrew = s.inventoryChangeCents > 0
   const shelfShrank = s.inventoryChangeCents < 0
-  const shownCustomers = Math.min(r.demand, 40)
+  const mood = dayMood(model, r)
+  const faces = reportFaces(r)
+  // Customers arrive one after another; each tile pops in after the headline.
+  const pop = (order: number) => ({
+    initial: { opacity: 0, scale: 0.6, y: 10 },
+    animate: { opacity: 1, scale: 1, y: 0 },
+    transition: { delay: 0.15 + order * 0.12, type: 'spring' as const, stiffness: 420, damping: 16 },
+  })
   const shelfIcons = Math.min(r.endInventory, SHELF_ICONS)
 
   return (
@@ -154,46 +236,115 @@ export function DayReport({
         <SparkIcon />
         Day {r.day} report
       </p>
-      <h1 className="card__title" ref={headingRef} tabIndex={-1}>
-        {profit > 0
-          ? `${shopName} made a profit`
-          : profit < 0
-            ? `${shopName} made a loss today`
-            : `${shopName} broke even`}
-      </h1>
-
-      {event && (
-        <div className="surprise">
-          <p className="surprise__label">Today's surprise</p>
-          <p className="surprise__title">{event.title}</p>
-          <p>{event.description}</p>
-        </div>
-      )}
-
-      <div className="visitors">
-        <p>
-          <strong>{plural(r.demand, 'customer', 'customers')}</strong> wanted to
-          buy at {formatMoney(r.priceCents)}. You had{' '}
-          {plural(r.available, 'item', 'items')} and sold{' '}
-          <strong>{r.sold}</strong>.
-          {r.missedCustomers > 0 &&
-            ` ${plural(r.missedCustomers, 'customer', 'customers')} left empty-handed.`}
+      <div className={`report-hero report-hero--${mood}`}>
+        {!reducedMotion && <Celebration mood={mood} />}
+        <h1 className="card__title" ref={headingRef} tabIndex={-1}>
+          {reportTitle(model, r)}
+        </h1>
+        <p className="visually-hidden">
+          {shopName}: {profit > 0 ? 'a profit' : profit < 0 ? 'a loss' : 'broke even'} of {formatMoney(Math.abs(profit))}.
         </p>
-        {shownCustomers > 0 && (
-          <div className="crowd" aria-hidden="true">
-            {Array.from({ length: shownCustomers }, (_, i) => (
+
+        {faces.happy + faces.sad > 0 ? (
+          <div className="cheer" aria-hidden="true">
+            {Array.from({ length: faces.happy + faces.sad }, (_, i) => (
               <motion.span
                 key={i}
-                className={i < r.sold ? 'crowd__person' : 'crowd__person crowd__person--missed'}
-                initial={{ opacity: 0, y: 8, scale: 0.6 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ delay: 0.15 + i * 0.03, duration: 0.25 }}
-              />
+                className={i < faces.happy ? 'cheer__face cheer__face--happy' : 'cheer__face cheer__face--sad'}
+                style={{ '--i': i } as CSSProperties}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + i * 0.05, duration: 0.3 }}
+              >
+                <Critter cast={cast} index={i} />
+              </motion.span>
             ))}
           </div>
+        ) : (
+          <p className="cheer cheer--empty">Nobody came by today.</p>
         )}
+
+        <p className="fact-row fact-row--center">
+          <span className="fact-chip">
+            <strong>{r.demand}</strong> came
+          </span>
+          <span className="fact-chip fact-chip--up">
+            <strong>{r.sold}</strong> bought
+          </span>
+          {r.missedCustomers > 0 && (
+            <span className="fact-chip fact-chip--calm">
+              <strong>{r.missedCustomers}</strong> missed out
+            </span>
+          )}
+        </p>
       </div>
 
+      <div className="score" role="group" aria-label="Today at a glance">
+        <motion.p
+          className={
+            profit > 0 ? 'score__tile score__tile--profit' : profit < 0 ? 'score__tile score__tile--calm' : 'score__tile'
+          }
+          {...pop(0)}
+        >
+          <SparkIcon />
+          <span>{profit < 0 ? 'Loss' : 'Profit'}</span>
+          <strong>{formatSigned(profit)}</strong>
+        </motion.p>
+        <motion.p className="score__tile score__tile--cash" {...pop(1)}>
+          <span className="coin" />
+          <span>Cash</span>
+          <strong>{formatMoney(r.cashEndCents)}</strong>
+        </motion.p>
+        <motion.p className="score__tile score__tile--shelf" {...pop(2)}>
+          <ProductIcon icon={icon} />
+          <span>Shelf</span>
+          <strong>{r.endInventory}</strong>
+        </motion.p>
+      </div>
+
+      {event && (
+        <p className="surprise surprise--line">
+          <span className="surprise__label">Surprise!</span>
+          <strong>{event.title}</strong>
+          <span>{event.description}</span>
+        </p>
+      )}
+
+      <section className="coach" aria-live="polite">
+        <p className="coach__by">
+          <SparkIcon />
+          {aiCoaching ? 'AI coach' : asking ? 'Coach (the AI is thinking…)' : 'Coach'}
+        </p>
+        <p>{coaching.encouragement}</p>
+        <p className="coach__tip">
+          <BulbIcon />
+          <span>
+            <span className="visually-hidden">Try this: </span>
+            {coaching.suggestion}
+          </span>
+        </p>
+      </section>
+
+      {coaching.challenge && (
+        <motion.section
+          className="mission"
+          aria-label="Mission for tomorrow"
+          initial={{ opacity: 0, y: 12, rotate: -1.5 }}
+          animate={{ opacity: 1, y: 0, rotate: 0 }}
+          transition={{ delay: 0.6, type: 'spring', stiffness: 300, damping: 18 }}
+        >
+          <TargetIcon />
+          <p>
+            <span className="mission__tag">Mission</span>
+            {missionText(coaching.challenge)}
+          </p>
+        </motion.section>
+      )}
+
+      <details className="numbers">
+        <summary>
+          <span>See how it adds up</span>
+        </summary>
       <div className="books">
         <Book
           kind="profit"
@@ -391,28 +542,7 @@ export function DayReport({
         )}
       </motion.div>
 
-      <section className="coach" aria-live="polite">
-        <p className="coach__by">
-          <SparkIcon />
-          {aiCoaching
-            ? 'From the AI Director'
-            : asking
-              ? 'Your coach (the AI Director is reading your day…)'
-              : 'Your coach'}
-        </p>
-        <p>{coaching.encouragement}</p>
-        <p>
-          <strong>Try this: </strong>
-          {coaching.suggestion}
-        </p>
-        {coaching.challenge && <p className="coach__challenge">{coaching.challenge}</p>}
-        {aiCoaching && (
-          <p className="field__help">
-            The AI only explains. Every number on this page comes from the
-            game's own maths.
-          </p>
-        )}
-      </section>
+      </details>
 
       <div className="card__actions">
         <button type="button" className="text-button" onClick={onExit}>

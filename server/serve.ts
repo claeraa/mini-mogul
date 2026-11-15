@@ -41,6 +41,7 @@ const ai = createAiEndpoint({
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   AI_MODEL: process.env.AI_MODEL,
   AI_DAILY_LIMIT: process.env.AI_DAILY_LIMIT,
+  AI_DEBUG: process.env.AI_DEBUG,
 })
 
 /** The file for a URL path, or null if it is missing or outside dist/. */

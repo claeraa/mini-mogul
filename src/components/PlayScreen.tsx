@@ -16,6 +16,7 @@ import { playSfx } from '../lib/audio.ts'
 import type { Progress } from '../lib/storage.ts'
 import type { WorldDirection } from '../ai/schema.ts'
 import { buildWorld } from '../ai/world.ts'
+import { offeringName, shorten } from '../world/names.ts'
 import { crowdNote, shelfDuring, stageVisitors } from '../world/stage.ts'
 import { Switch } from './AudioSettings.tsx'
 import { CloseButton, ConfirmDialog } from './ConfirmDialog.tsx'
@@ -155,7 +156,7 @@ export function PlayScreen({
     return () => timers.forEach((id) => window.clearTimeout(id))
   }, [phase, result])
 
-  const product = shop.offering || 'your first creations'
+  const product = shorten(offeringName(shop.offering), 32) || blueprint.label
   const yesterday = game.history.at(-1)
 
   const update = (patch: Partial<DayPlan>) =>
@@ -252,6 +253,8 @@ export function PlayScreen({
         result={result}
         shopName={shop.shopName}
         icon={blueprint.productIcon}
+        cast={blueprint.customers}
+        reducedMotion={reducedMotion}
         shop={{ worldId, idea: shop.idea, offering: shop.offering }}
         aiOn={aiOn}
         onNextDay={planNextDay}
@@ -338,7 +341,7 @@ export function PlayScreen({
             street={
               <ShopStreet
                 icon={blueprint.productIcon}
-                theme={blueprint.theme}
+                cast={blueprint.customers}
                 visitors={cast}
                 crowd={crowdNote(open ? 'arrived' : 'expected', crowd, cast.length)}
                 shelfCount={shelfCount}
@@ -396,8 +399,7 @@ export function PlayScreen({
               {shop.shopName} is open!
             </p>
             <p>
-              Customers are stopping by. Each coin is one sale at{' '}
-              {formatMoney(result.priceCents)}.
+              <span className="coin" /> Each coin is one sale at {formatMoney(result.priceCents)}.
             </p>
             <button
               type="button"
@@ -453,7 +455,7 @@ export function PlayScreen({
                     min={model.minPriceCents}
                     max={model.ceilingPriceCents}
                     step={model.priceStepCents}
-                    hint="Lower price, more customers. Higher price, more coins each."
+                    hint="Lower: more customers. Higher: more coins each."
                     onChange={(priceCents) => update({ priceCents })}
                   />
                 )}
@@ -469,7 +471,7 @@ export function PlayScreen({
                     hint={
                       makeLimit === 0
                         ? 'Not enough cash to make more today.'
-                        : `Each costs ${formatMoney(model.unitCostCents)}. That is ${formatMoney(plan.produce * model.unitCostCents)} today. You can afford ${makeLimit}.`
+                        : `${formatMoney(model.unitCostCents)} each. You can make up to ${makeLimit}.`
                     }
                     onChange={(produce) => update({ produce })}
                   />
@@ -496,20 +498,31 @@ export function PlayScreen({
               {match.text}
             </p>
 
-            <p className="plan-summary">
-              Selling <strong>{product}</strong>. Spending{' '}
-              <strong>{formatMoney(spending)}</strong> of your{' '}
-              {formatMoney(game.cashCents)}.
-              {yesterday &&
-                ` Yesterday: ${formatSigned(yesterday.operatingProfitCents)} ${
-                  yesterday.operatingProfitCents < 0 ? 'loss' : 'profit'
-                }.`}
+            <p className="fact-row">
+              <span className="fact-chip">
+                <ProductIcon icon={blueprint.productIcon} />
+                {shop.offering.trim() && <span className="visually-hidden">Selling </span>}
+                {product}
+              </span>
+              <span className="fact-chip fact-chip--spend">
+                <span className="coin" />
+                Spend {formatMoney(spending)}
+              </span>
+              {yesterday && (
+                <span
+                  className={
+                    yesterday.operatingProfitCents < 0 ? 'fact-chip fact-chip--down' : 'fact-chip fact-chip--up'
+                  }
+                >
+                  Yesterday {formatSigned(yesterday.operatingProfitCents)}
+                </span>
+              )}
             </p>
 
             {outOfCash && (
               <p className="card__note card__note--warn" role="status">
-                The till and the shelf are both empty, so the shop cannot open.
-                Every mogul has days like this. Start over and try a new plan.
+                No cash and an empty shelf. It happens to every mogul! Start
+                over and try a new plan.
               </p>
             )}
 
@@ -519,7 +532,7 @@ export function PlayScreen({
                 Open for Business
               </TactileButton>
               {toSell === 0 && !outOfCash && (
-                <p className="field__help">Make at least one item to open.</p>
+                <p className="field__help">Make at least one to open.</p>
               )}
               <button
                 type="button"

@@ -7,7 +7,9 @@ import type { World } from '../ai/world.ts'
 import type { Progress, ThemeId } from '../lib/storage.ts'
 import { DISCARD_COPY, THEMES } from '../lib/constants.ts'
 import { CloseButton, ConfirmDialog } from './ConfirmDialog.tsx'
-import { offeringLabel } from '../world/blueprint.ts'
+import { CAST_NAMES } from '../world/customers.ts'
+import { offeringName, shorten, suggestShopName } from '../world/names.ts'
+import { Critter } from './Critter.tsx'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
 import { ProductIcon } from './WorldParts.tsx'
 import { WorldScene } from './WorldScene.tsx'
@@ -36,20 +38,11 @@ type CreateScreenProps = {
   onSave: (values: ShopValues) => void
 }
 
-function suggestShopName(playerName: string, idea: string) {
-  const words = idea
-    .replace(/^(a|an|the)\s+/i, '')
-    .split(/\s+/)
-    .slice(0, 4)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-  return (playerName ? `${playerName}'s ${words}` : words).slice(0, 40)
-}
-
 /**
- * What the Imagination Director made of the idea: who visits, what to sell
- * and what the business teaches. Says plainly when the built-in rules made
- * the world instead.
+ * The world at a glance: who visits (drawn, then named) and, when the AI
+ * Director imagined it, a one-line story, product ideas to tap and what the
+ * business teaches. Pictures and chips first; the longer words are tucked
+ * into "More" for anyone who wants them.
  */
 function DirectorNotes({
   world,
@@ -63,53 +56,39 @@ function DirectorNotes({
   onPickOffering?: (offering: string) => void
 }) {
   const { story, blueprint, source } = world
-
-  if (ai === 'thinking') {
-    return (
-      <div className="director director--thinking" role="status">
-        <p className="director__by">
-          <SparkIcon />
-          The Imagination Director is dreaming up your world…
-        </p>
-        <p className="field__help">You can keep going while it thinks.</p>
-      </div>
-    )
-  }
-
-  if (source === 'rules') {
-    if (ai === 'off' || !onAskAi) return null
-    return (
-      <div className="director director--rules" role="status">
-        <p className="field__help">
-          {ai === 'failed'
-            ? 'The Imagination Director could not be reached, so Mini Mogul built this world with its own rules. Everything still works.'
-            : 'Built with Mini Mogul\'s own world rules.'}
-        </p>
-        <button type="button" className="chip" onClick={onAskAi}>
-          <SparkIcon /> Ask the Imagination Director
-        </button>
-      </div>
-    )
-  }
+  const fromAi = source === 'ai'
+  const castName = CAST_NAMES[blueprint.customers]
 
   return (
-    <div className="director" role="status">
-      <p className="director__by">
-        <SparkIcon />
-        Imagined by the AI Director
+    <div className={fromAi ? 'director' : 'director director--plain'}>
+      {fromAi && (
+        <p className="director__by">
+          <SparkIcon />
+          AI Director
+        </p>
+      )}
+      {fromAi && <p className="director__story">{shorten(story.summary, 120)}</p>}
+
+      <p className="director__cast">
+        <span className="director__faces" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <Critter key={i} cast={blueprint.customers} index={i} />
+          ))}
+        </span>
+        <span>
+          <span className="director__tag">Customers</span>
+          <strong>{castName}</strong>
+        </span>
       </p>
-      <p>{story.summary}</p>
-      <p className="director__line">
-        <span>Your customers</span>
-        {story.customers}
-      </p>
-      {onPickOffering && story.offerings.length > 0 && (
+
+      {fromAi && onPickOffering && story.offerings.length > 0 && (
         <div className="director__line">
-          <span>Ideas for your first {blueprint.kind === 'service' ? 'service' : 'product'}</span>
+          <span className="director__tag">Tap one to {blueprint.kind === 'service' ? 'offer' : 'sell'}</span>
           <ul className="director__chips">
             {story.offerings.map((idea) => (
               <li key={idea}>
                 <button type="button" className="chip" onClick={() => onPickOffering(idea)}>
+                  <ProductIcon icon={blueprint.productIcon} />
                   {idea}
                 </button>
               </li>
@@ -117,21 +96,50 @@ function DirectorNotes({
           </ul>
         </div>
       )}
-      <div className="director__line">
-        <span>You will learn about</span>
-        <ul className="director__concepts">
-          {story.concepts.map((concept) => (
-            <li key={concept.id}>
-              <strong>{CONCEPTS[concept.id]}.</strong> {concept.why}
+
+      {fromAi && (
+        <details className="director__more">
+          <summary>
+            <span className="director__tag">You will learn</span>
+            {story.concepts.map((concept) => (
+              <span key={concept.id} className="learn-chip">
+                {CONCEPTS[concept.id]}
+              </span>
+            ))}
+            <span className="director__toggle">More</span>
+          </summary>
+          <ul className="director__concepts">
+            <li>
+              <strong>Customers.</strong> {story.customers}
             </li>
-          ))}
-        </ul>
-      </div>
-      {blueprint.kind === 'service' && (
-        <p className="field__help">
-          This is a service business. For now Mini Mogul plays every business
-          the same way: each one you prepare counts as an item on your shelf.
+            {story.concepts.map((concept) => (
+              <li key={concept.id}>
+                <strong>{CONCEPTS[concept.id]}.</strong> {concept.why}
+              </li>
+            ))}
+            {blueprint.kind === 'service' && (
+              <li>
+                <strong>Services.</strong> For now each one you get ready
+                counts as one item on your shelf.
+              </li>
+            )}
+          </ul>
+        </details>
+      )}
+
+      {ai === 'thinking' && (
+        <p className="director__status" role="status">
+          <SparkIcon />
+          The AI Director is dreaming…
         </p>
+      )}
+      {!fromAi && ai !== 'thinking' && ai !== 'off' && onAskAi && (
+        <div className="director__ask" role="status">
+          {ai === 'failed' && <span className="field__help">The AI is resting. Your world still works!</span>}
+          <button type="button" className="chip" onClick={onAskAi}>
+            <SparkIcon /> Ask the AI Director
+          </button>
+        </div>
       )}
     </div>
   )
@@ -211,7 +219,7 @@ export function CreateScreen({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     if (!shopName.trim()) {
-      setError('Give your shop a name so customers can find it.')
+      setError('Your shop needs a name!')
       nameRef.current?.focus()
       return
     }
@@ -233,10 +241,10 @@ export function CreateScreen({
         <CloseButton label="Close and return home" onClick={onExit} />
         <p className="card__step">
           <SparkIcon />
-          Shop saved
+          Ready to open!
         </p>
         <h1 className="card__title" ref={headingRef} tabIndex={-1}>
-          {shopName} is ready to open
+          {shopName}
         </h1>
         <WorldScene blueprint={blueprint} sign={shopName} rich={richPreview} />
         <p className="world-label">
@@ -244,22 +252,18 @@ export function CreateScreen({
           {blueprint.label}
         </p>
         <DirectorNotes world={world} ai={ai} />
-        <dl className="summary">
-          <div>
-            <dt>The idea</dt>
-            <dd>{progress.idea}</dd>
-          </div>
-          {offering && (
-            <div>
-              <dt>{offeringLabel(blueprint.kind)}</dt>
-              <dd>{offering}</dd>
-            </div>
-          )}
-        </dl>
-        <p className="card__note">
-          Your shop is saved on this device. Open it to set a price, make your
-          first items and meet your customers.
-        </p>
+        {offering && (
+          <p className="fact-row">
+            <span className="fact-chip">
+              <ProductIcon icon={blueprint.productIcon} />
+              <span className="visually-hidden">
+                {blueprint.kind === 'service' ? 'First service: ' : 'First product: '}
+              </span>
+              {shorten(offeringName(offering), 40)}
+            </span>
+          </p>
+        )}
+        <p className="card__note">Saved on this device.</p>
         <div className="card__actions card__actions--stack">
           <TactileButton size="large" onClick={onPlay}>
             <SparkIcon />
@@ -271,7 +275,7 @@ export function CreateScreen({
               className="text-button"
               onClick={() => setEditing(true)}
             >
-              Edit shop
+              Edit
             </button>
             <button type="button" className="text-button" onClick={onExit}>
               {exitLabel}
@@ -339,7 +343,7 @@ export function CreateScreen({
       </div>
 
       <fieldset className="field themes">
-        <legend>Shop style</legend>
+        <legend>Style</legend>
         <div className="themes__grid">
           {THEMES.map((option) => (
             <label key={option.id} className="theme-option">
@@ -362,7 +366,8 @@ export function CreateScreen({
 
       <div className="field">
         <label htmlFor="first-offering">
-          What is the first thing you will sell or do?
+          <ProductIcon icon={blueprint.productIcon} />
+          {blueprint.kind === 'service' ? 'First thing to offer' : 'First thing to sell'}
         </label>
         <input
           id="first-offering"
@@ -370,12 +375,8 @@ export function CreateScreen({
           maxLength={50}
           placeholder="Cloud cupcakes, dragon naps, dog walks…"
           value={offering}
-          aria-describedby="first-offering-help"
           onChange={(event) => setOffering(event.target.value)}
         />
-        <p id="first-offering-help" className="field__help">
-          Your idea, this and your style shape the world above.
-        </p>
       </div>
 
       <div className="card__actions">

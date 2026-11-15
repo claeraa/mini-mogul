@@ -1,13 +1,14 @@
 import type { CSSProperties, ReactNode } from 'react'
-import type { ProductIconId, WorldThemeId } from '../world/blueprint.ts'
+import type { ProductIconId } from '../world/blueprint.ts'
+import type { CustomerCastId } from '../world/customers.ts'
 import type { CrowdNote, StageVisitor } from '../world/stage.ts'
 import { Critter } from './Critter.tsx'
 import { ProductIcon } from './WorldParts.tsx'
 
 type ShopStreetProps = {
   icon: ProductIconId
-  /** Picks the cast of customers: bakers, pets, baby dragons and so on. */
-  theme: WorldThemeId
+  /** Which customers queue here: fairies, dragon families, shoppers and so on. */
+  cast: CustomerCastId
   visitors: StageVisitor[]
   /** Words for the customers who do not fit on screen, if there are any. */
   crowd: CrowdNote | null
@@ -37,7 +38,7 @@ const SHELF_ICONS = 10
  */
 export function ShopStreet({
   icon,
-  theme,
+  cast,
   visitors,
   crowd,
   shelfCount,
@@ -83,7 +84,7 @@ export function ShopStreet({
             style={{ '--i': i, '--row': i % 3 } as CSSProperties}
           >
             <span className="guest__body">
-              <Critter theme={theme} index={i} />
+              <Critter cast={cast} index={i} />
             </span>
             {playing && (
               <span className="guest__bubble">

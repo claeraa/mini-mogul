@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
         ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY,
         AI_MODEL: env.AI_MODEL,
         AI_DAILY_LIMIT: env.AI_DAILY_LIMIT,
+        AI_DEBUG: env.AI_DEBUG,
       }),
     ],
   }

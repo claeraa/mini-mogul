@@ -11,6 +11,11 @@
  */
 
 import { mix, shade } from './color.ts'
+import { pickCustomerCast } from './customers.ts'
+import type { CustomerCastId } from './customers.ts'
+import { hits, tokenize } from './words.ts'
+
+export { tokenize }
 
 export type StyleId = 'cottage' | 'forest' | 'seaside' | 'starlight'
 
@@ -52,6 +57,9 @@ export type PropId =
   | 'lantern'
   | 'crate'
   | 'barrel'
+  | 'clothesRack'
+  | 'mannequin'
+  | 'toyChest'
 
 export type DecorationId =
   | 'sparkles'
@@ -73,6 +81,8 @@ export type ProductIconId =
   | 'palette'
   | 'book'
   | 'gift'
+  | 'dress'
+  | 'toy'
 
 export type TimeOfDay = 'day' | 'night'
 
@@ -109,6 +119,8 @@ export type WorldBlueprint = {
   props: PropId[]
   decorations: DecorationId[]
   productIcon: ProductIconId
+  /** Which cast of little customers visits; see world/customers.ts. */
+  customers: CustomerCastId
   colors: WorldColors
   /** Things happy customers say in this world. */
   reactions: string[]
@@ -234,11 +246,46 @@ const ARCHETYPES: Archetype[] = [
     reactions: ['So pretty!', 'It smells lovely!', 'For my window!', 'Beautiful!'],
   },
   {
+    theme: 'general-store',
+    keywords: [
+      'fashion*', 'boutique', 'cloth*', 'dress*', 'outfit', 'costume', 'hat',
+      'shoe', 'scarf', 'scarves', 'wardrobe', 'tailor', 'couture', 'gown',
+      'shirt', 'sock', 'tiara', 'accessor*', 'handbag',
+    ],
+    baseLabel: 'fashion boutique',
+    structure: 'studio',
+    biome: 'meadow',
+    props: ['clothesRack', 'mannequin', 'lantern'],
+    decorations: ['bunting', 'sparkles'],
+    productIcon: 'dress',
+    wall: '#ffe1ea',
+    wallShade: '#f4bfd0',
+    accent: '#e0569b',
+    reactions: ['So stylish!', 'Perfect fit!', 'I love it!', 'Twirl time!'],
+  },
+  {
+    theme: 'general-store',
+    keywords: [
+      'toy', 'doll', 'teddy', 'teddies', 'puzzle', 'game', 'kite', 'robot',
+      'plush*', 'yoyo',
+    ],
+    baseLabel: 'toy shop',
+    structure: 'cottage',
+    biome: 'meadow',
+    props: ['toyChest', 'toyBlocks', 'crate'],
+    decorations: ['bunting'],
+    productIcon: 'toy',
+    wall: '#fff0c9',
+    wallShade: '#f2d596',
+    accent: '#4aa8e8',
+    reactions: ['So fun!', 'Can I play?', 'Best toy ever!', 'Wow!'],
+  },
+  {
     theme: 'craft-studio',
     keywords: [
       'craft*', 'art', 'artist', 'paint*', 'draw*', 'knit*', 'sew*',
       'crochet', 'jewel*', 'bead', 'bracelet', 'necklace', 'pottery', 'clay',
-      'candle', 'soap', 'toy', 'card', 'sticker', 'origami', 'handmade',
+      'candle', 'soap', 'card', 'sticker', 'origami', 'handmade',
       'studio', 'slime',
     ],
     baseLabel: 'craft studio',
@@ -301,6 +348,8 @@ const ICON_WORDS: [ProductIconId, string[]][] = [
   ['egg', ['egg']],
   ['paw', ['walk*', 'groom*', 'cuddle', 'treat', 'bone']],
   ['book', ['book', 'story', 'stories', 'comic', 'poem']],
+  ['dress', ['dress*', 'cloth*', 'outfit', 'costume', 'hat', 'shoe', 'scarf', 'scarves', 'shirt', 'gown', 'sock', 'tiara', 'cape', 'coat', 'skirt', 'wings']],
+  ['toy', ['toy', 'doll', 'teddy', 'teddies', 'puzzle', 'game', 'kite', 'robot', 'plush*', 'yoyo']],
   ['palette', ['paint*', 'drawing', 'bracelet', 'necklace', 'card', 'sticker', 'candle', 'craft*']],
 ]
 
@@ -400,25 +449,6 @@ const MAX_PROPS = 3
 
 // ---- Helpers ----------------------------------------------------------------
 
-/** Lower-case words, with accents and punctuation removed. */
-export function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .split(/[^a-z]+/)
-    .filter(Boolean)
-}
-
-function matches(token: string, keyword: string): boolean {
-  if (keyword.endsWith('*')) return token.startsWith(keyword.slice(0, -1))
-  return token === keyword || token === `${keyword}s` || token === `${keyword}es`
-}
-
-const hits = (tokens: string[], keywords: string[]) =>
-  keywords.filter((keyword) => tokens.some((token) => matches(token, keyword)))
-    .length
-
 /** A small stable string hash (FNV-1a), used only to vary the fallback. */
 function hash(text: string): number {
   let h = 0x811c9dc5
@@ -475,6 +505,10 @@ export type WorldChoice = {
   wallShade: string
   accent: string
   reactions: string[]
+  /** Words describing who visits (the AI Director's), to help pick the cast. */
+  audience?: string
+  /** A cast the AI Director picked from the supported list. */
+  customerCast?: CustomerCastId | null
 }
 
 /** Applies the player's style and the renderer's limits to a choice. */
@@ -516,6 +550,13 @@ export function assembleBlueprint(
     props: [...new Set(choice.props)].slice(0, MAX_PROPS),
     decorations: [...new Set(wanted)].slice(0, MAX_DECORATIONS),
     productIcon: pickIcon(tokenize(input.offering ?? ''), choice.productIcon),
+    customers: pickCustomerCast({
+      theme: choice.theme,
+      idea: input.idea,
+      offering: input.offering,
+      audience: choice.audience,
+      suggested: choice.customerCast,
+    }),
     colors: {
       skyTop,
       skyBottom: night ? skyBottom : mix(skyBottom, choice.wall, 0.3),

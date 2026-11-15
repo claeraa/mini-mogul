@@ -7,7 +7,7 @@ A player types any business idea, however fanciful, and Mini Mogul turns it into
 ## What it does
 
 - **Imagination Gateway**: animated homepage, idea entry and shop creation with four art styles.
-- **A world for every idea**: the building, setting, props, colours and customers are chosen from the idea. A built-in rule set does this with no AI; the optional AI Imagination Director does it with Claude.
+- **A world for every idea**: the building, setting, props, colours, product icon and the customers themselves (fairy folk, dragon families, pet owners, shoppers, kids and more) are chosen from the idea. A built-in rule set does this with no AI; the optional AI Imagination Director does it with Claude.
 - **A playable business day**: price, production and flyers, with customers, a shelf and a till in the world itself.
 - **An honest day report**: profit, cash change and inventory are shown separately, with an explanation of why profit and cash differ.
 - **A coach**: after each day, a short explanation, one thing to try and an optional challenge, from the AI or from the built-in coach.
@@ -50,6 +50,7 @@ This makes paid API calls. `npm run ai:check` makes exactly two calls against a 
 | `ANTHROPIC_API_KEY` | The key. Server-side only. |
 | `AI_MODEL` | Optional. Defaults to `claude-haiku-5-5`. |
 | `AI_DAILY_LIMIT` | Optional. Most AI calls per day across all players. Defaults to 300 (and 20 per minute). |
+| `AI_DEBUG` | Optional. `on` adds the reason for each AI failure to the server log (`npm run dev` always does). |
 
 ### How it is kept safe
 
@@ -57,7 +58,8 @@ This makes paid API calls. `npm run ai:check` makes exactly two calls against a 
 - The AI chooses only from artwork the renderer has, and every reply is validated on the server and again in the browser (`src/ai/schema.ts`).
 - The AI never does maths. Coaching is given the financial engine's figures, may not mention any other number, and cannot change the game state. The server re-simulates the day and refuses to discuss one the engine could not have produced.
 - Only the idea, the first product and the day's numbers are sent. The player's name is not.
-- Server logs record the kind of failure only, never the player's words or the key.
+- Server logs record the kind of failure and, in development, which field broke which rule (for example `customers: too long (88 characters, limit 100)`). They never hold the player's words, the model's text or the key.
+- Descriptions that run slightly over their length are shortened at a sentence or word; every safety check still runs on the whole text first.
 
 ## Deploying
 
@@ -105,6 +107,8 @@ A save from before My Worlds existed (`mini-mogul:progress`, `mini-mogul:game`, 
 - `server/` — the `/api/ai` endpoint: prompts and checks (`director.ts`), the Anthropic provider (`provider.ts`), request handling shared by every server (`http.ts`), the Vite middleware (`vitePlugin.ts`), the production server (`serve.ts`) and the live check (`check.ts`)
 - `render.yaml` — hosting description for Render
 - `src/lib/ai.ts` — the browser's client for that endpoint, with caching and fallback
+- `src/world/customers.ts`, `src/components/Critter.tsx` — which cast of customers a business gets, and how each is drawn
+- `src/world/names.ts` — tidy shop and product names
 - `src/worlds/store.ts` — My Worlds: the multi-world save, its checks and the migration from the old single save
 - `src/components/WorldsScreen.tsx` — the My Worlds screen
 - `src/game/coach.ts` — the day's facts for the coach, and the built-in coach

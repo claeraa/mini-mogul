@@ -92,6 +92,28 @@ function GlyphArt({ icon }: { icon: ProductIconId }) {
           <path d="M5.500 9c1.500-.4 3-.3 4.300.2M5.500 12.500c1.500-.4 3-.3 4.300.2M14.200 9.200c1.300-.5 2.800-.6 4.300-.2M14.200 12.700c1.300-.5 2.800-.6 4.300-.2" stroke="#fff" strokeWidth="1.100" strokeLinecap="round" />
         </>
       )
+    case 'dress':
+      return (
+        <>
+          <path d="M8.500 2.500l1.700 4.500h3.600l1.700-4.500 2 1.300-1.800 5.700 5 10c-3 2-14.400 2-17.400 0l5-10L6.500 3.800z" fill="#ff7fb0" stroke="#d6497f" strokeWidth="1" strokeLinejoin="round" />
+          <path d="M8.300 9.500h7.400" stroke="#fff3a0" strokeWidth="1.800" strokeLinecap="round" />
+          <path d="M8 15.500l-1 4M12 14.500v5.500M16 15.500l1 4" stroke="#fff" strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+        </>
+      )
+    case 'toy':
+      return (
+        <>
+          <circle cx="6.500" cy="5.500" r="3" fill="#c98f5a" stroke="#8f5f38" strokeWidth="0.900" />
+          <circle cx="17.500" cy="5.500" r="3" fill="#c98f5a" stroke="#8f5f38" strokeWidth="0.900" />
+          <ellipse cx="12" cy="18" rx="6.500" ry="5" fill="#c98f5a" stroke="#8f5f38" strokeWidth="0.900" />
+          <ellipse cx="12" cy="18.500" rx="3.500" ry="3" fill="#f1d2a6" />
+          <circle cx="12" cy="9.500" r="6.500" fill="#d9a56e" stroke="#8f5f38" strokeWidth="0.900" />
+          <ellipse cx="12" cy="11.500" rx="2.800" ry="2.200" fill="#f1d2a6" />
+          <circle cx="9.500" cy="8.500" r="1" fill="#3b2a2a" />
+          <circle cx="14.500" cy="8.500" r="1" fill="#3b2a2a" />
+          <path d="M11 11h2l-1 1.200z" fill="#3b2a2a" />
+        </>
+      )
     case 'gift':
       return (
         <>
@@ -597,6 +619,52 @@ function PropArt({ id, colors: c, icon }: PropArtProps & { id: PropId }) {
           <rect x="-14" y="-16" width="28" height="16" rx="2" fill={WOOD} />
           <path d="M-14 -10.500h28M-14 -5h28" stroke={WOOD_DARK} strokeWidth="1.500" />
           <path d="M-9 -16v16M9 -16v16" stroke={WOOD_DARK} strokeWidth="2" />
+        </>
+      )
+    case 'clothesRack':
+      return (
+        <>
+          <path d="M-15 0V-31M15 0V-31M-19 0h8M11 0h8" stroke={WOOD_DARK} strokeWidth="2.500" strokeLinecap="round" />
+          <path d="M-17 -31h34" stroke={WOOD} strokeWidth="3" strokeLinecap="round" />
+          {[
+            [-9, c.accent],
+            [0, c.trim],
+            [9, c.roof],
+          ].map(([x, fill]) => (
+            <g key={x} transform={`translate(${x} -30)`}>
+              <path d="M0 0v2" stroke="#7a5540" strokeWidth="1.200" />
+              <path d="M0 2l-4 4h8z" fill={fill as string} />
+              <path d="M-3 6h6l3.500 14h-13z" fill={fill as string} />
+              <path d="M-3 9.500h6" stroke="#fff" strokeWidth="1.200" opacity="0.7" />
+            </g>
+          ))}
+        </>
+      )
+    case 'mannequin':
+      return (
+        <>
+          <ellipse cx="0" cy="-1.500" rx="8" ry="2.500" fill={WOOD_DARK} />
+          <rect x="-1.200" y="-14" width="2.400" height="13" fill={WOOD_DARK} />
+          <circle cx="0" cy="-37" r="3" fill="#f3dcc4" />
+          <path d="M-6 -34h12l1.500 7-2 4.500 6.500 12.500h-24l6.500-12.500-2-4.500z" fill={c.accent} />
+          <path d="M-5 -22.500h10" stroke={c.trim} strokeWidth="2.200" strokeLinecap="round" />
+          <path d="M-6 -14l-2 3M0 -15v4.500M6 -14l2 3" stroke="#fff" strokeWidth="1.100" strokeLinecap="round" opacity="0.6" />
+        </>
+      )
+    case 'toyChest':
+      return (
+        <>
+          <rect x="-14" y="-29" width="28" height="9" rx="2.500" fill={c.roof} />
+          <circle cx="-7" cy="-21" r="2.200" fill="#c98f5a" />
+          <circle cx="-1" cy="-21" r="2.200" fill="#c98f5a" />
+          <circle cx="-4" cy="-17.500" r="4.500" fill="#d9a56e" />
+          <circle cx="-5.500" cy="-18.500" r="0.700" fill="#3b2a2a" />
+          <circle cx="-2.500" cy="-18.500" r="0.700" fill="#3b2a2a" />
+          <circle cx="6.500" cy="-17" r="4.500" fill={c.trim} />
+          <path d="M2.500 -17h8" stroke="#fff" strokeWidth="1.200" opacity="0.8" />
+          <rect x="-15" y="-14" width="30" height="14" rx="2.500" fill={c.accent} />
+          <path d="M-9 -14v14M9 -14v14" stroke="#fff" strokeWidth="1.500" opacity="0.45" />
+          <rect x="-2.500" y="-10" width="5" height="5.500" rx="1.200" fill={c.trim} />
         </>
       )
     case 'barrel':

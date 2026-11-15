@@ -66,7 +66,7 @@ const facts = coachFacts(PRODUCT_SHOP, result)
 
 const coach = await call('coach', { idea, offering, result })
 assert.equal(coach.status, 200, `coach call failed: ${JSON.stringify(coach.json)}`)
-const coaching = parseCoaching(coach.json.coaching, facts.allowed)
+const coaching = parseCoaching(coach.json.coaching, facts.allowed, facts.outcome)
 assert.ok(coaching, 'the coaching reply did not pass validation (it may have used a number the engine did not produce)')
 console.log(`2. Coaching for a ${facts.outcome} day (${coach.ms} ms): VALID, uses only the engine's numbers`)
 console.log(`   ${coaching.encouragement}`)

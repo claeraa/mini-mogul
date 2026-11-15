@@ -50,8 +50,17 @@ export function createAnthropicProvider(env: AiEnv): Provider | null {
           },
         })
         if (response.stop_reason === 'refusal') throw new AiError('refused')
-        if (response.stop_reason === 'max_tokens' || response.parsed_output == null) {
-          throw new AiError('invalid_reply')
+        if (response.stop_reason === 'max_tokens') {
+          throw new AiError(
+            'invalid_reply',
+            `the reply was cut off at max_tokens (${response.usage.output_tokens} output tokens used)`,
+          )
+        }
+        if (response.parsed_output == null) {
+          throw new AiError(
+            'invalid_reply',
+            `no parsed output (stop_reason ${String(response.stop_reason)}, blocks: ${response.content.map((b) => b.type).join(',') || 'none'})`,
+          )
         }
         return response.parsed_output
       } catch (error) {
@@ -65,9 +74,14 @@ export function createAnthropicProvider(env: AiEnv): Provider | null {
         if (error instanceof Anthropic.RateLimitError) throw new AiError('rate_limited')
         if (error instanceof Anthropic.APIConnectionTimeoutError) throw new AiError('timeout')
         if (error instanceof Anthropic.APIConnectionError) throw new AiError('unavailable')
-        if (error instanceof Anthropic.APIError) throw new AiError('unavailable')
+        if (error instanceof Anthropic.APIError) {
+          throw new AiError('unavailable', `API error, HTTP ${String(error.status)}`)
+        }
         // The SDK could not parse or validate the reply against the schema.
-        throw new AiError('invalid_reply')
+        throw new AiError(
+          'invalid_reply',
+          `the SDK could not read the reply: ${error instanceof Error ? error.name : typeof error}`,
+        )
       }
     },
   }

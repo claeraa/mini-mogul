@@ -17,6 +17,8 @@ export type AiSettings = AiEnv & {
   AI_DIRECTOR?: string
   /** Optional cap on AI calls per day across all players (default 300). */
   AI_DAILY_LIMIT?: string
+  /** "on" adds the reason for each AI failure to the server log. */
+  AI_DEBUG?: string
 }
 
 function readJson(req: IncomingMessage): Promise<unknown> {
@@ -48,7 +50,7 @@ function readJson(req: IncomingMessage): Promise<unknown> {
  * on deliberately, so a key that happens to be set can never run up charges
  * by surprise.
  */
-export function createAiEndpoint(settings: AiSettings) {
+export function createAiEndpoint(settings: AiSettings, options: { debug?: boolean } = {}) {
   const enabled = settings.AI_DIRECTOR?.trim() === 'on'
   const provider = createAnthropicProvider({
     ANTHROPIC_API_KEY: enabled ? settings.ANTHROPIC_API_KEY : undefined,
@@ -58,6 +60,7 @@ export function createAiEndpoint(settings: AiSettings) {
   const handle = createAiHandler(provider, {
     perDay: Number.isInteger(perDay) && perDay > 0 ? perDay : undefined,
     log: (message) => console.warn(message),
+    debug: options.debug ?? settings.AI_DEBUG?.trim() === 'on',
   })
 
   /** Answers the request if it is for /api/ai/*; otherwise returns false. */

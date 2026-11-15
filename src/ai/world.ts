@@ -67,6 +67,8 @@ export function buildWorld(
         ...WALL_COLORS[direction.wallColor],
         accent: ACCENT_COLORS[direction.accentColor],
         reactions: direction.reactions,
+        audience: `${direction.customers} ${direction.label}`,
+        customerCast: direction.customerCast,
       },
       input,
     ),

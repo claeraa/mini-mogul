@@ -1261,3 +1261,549 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* ---- Picture-first notes, chips and summaries ----------------------------- */
+
+.director--plain {
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+
+.director__story {
+  font-weight: 700;
+}
+
+.director__tag {
+  display: block;
+  font-size: 0.760rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.director__cast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.director__cast strong {
+  font-family: var(--font-display);
+  font-size: 1.150rem;
+}
+
+.director__faces {
+  flex: none;
+  display: flex;
+}
+
+.director__faces .critter {
+  width: 46px;
+  height: 54px;
+  margin-right: -8px;
+  overflow: visible;
+}
+
+.director__faces .critter__face--happy,
+.director__faces .critter__face--sad {
+  display: none;
+}
+
+.director .chip .product-icon {
+  width: 1.250em;
+  height: 1.250em;
+  margin-right: 0.300em;
+  vertical-align: -0.250em;
+}
+
+.director__more > summary,
+.numbers > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 14px;
+}
+
+.director__more > summary::-webkit-details-marker,
+.numbers > summary::-webkit-details-marker {
+  display: none;
+}
+
+.director__more > summary .director__tag {
+  flex: 1 0 100%;
+}
+
+.director__more > summary:focus-visible,
+.numbers > summary:focus-visible {
+  outline: 3px solid var(--deep);
+  outline-offset: 2px;
+}
+
+.learn-chip {
+  padding: 0.150em 0.750em;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.950rem;
+  color: #4a3aa0;
+  background: #e7defc;
+}
+
+.director__toggle {
+  margin-left: auto;
+  font-weight: 800;
+  font-size: 0.900rem;
+  color: #4a3aa0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.director__toggle::after {
+  content: ' ▾';
+}
+
+.director__more[open] .director__toggle::after {
+  content: ' ▴';
+}
+
+.director__more .director__concepts {
+  margin-top: 8px;
+}
+
+.director__status,
+.director__ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-weight: 700;
+  color: #5a47b8;
+}
+
+.director__status .spark-icon {
+  animation: w-twinkle 1.400s ease-in-out infinite;
+}
+
+.field > label:has(.product-icon) {
+  display: flex;
+  align-items: center;
+  gap: 0.400em;
+}
+
+.field > label .product-icon {
+  width: 1.350em;
+  height: 1.350em;
+}
+
+/* Small facts shown as chips instead of sentences. */
+.fact-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.fact-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.400em;
+  max-width: 100%;
+  padding: 0.250em 0.850em;
+  border-radius: 999px;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: inset 0 0 0 2px var(--line);
+  overflow-wrap: anywhere;
+}
+
+.fact-chip .product-icon {
+  width: 1.300em;
+  height: 1.300em;
+}
+
+.fact-chip--up {
+  color: #0d5b4a;
+  background: #dcf5e6;
+  box-shadow: inset 0 0 0 2px #a9dfc0;
+}
+
+.fact-chip--down {
+  color: #8a2f1c;
+  background: #ffe6dc;
+  box-shadow: inset 0 0 0 2px #f6bfae;
+}
+
+.fact-chip--spend {
+  color: #5a3200;
+  background: #fff1cc;
+  box-shadow: inset 0 0 0 2px #f2d596;
+}
+
+/* The day's result at a glance. */
+.score {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.score__tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 8px;
+  border-radius: 20px;
+  text-align: center;
+  font-weight: 800;
+  color: var(--ink);
+  background: #eef4ff;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+
+.score__tile > span:not(.coin) {
+  font-size: 0.800rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.score__tile strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.200rem, 5vw, 1.700rem);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.score__tile .product-icon,
+.score__tile .spark-icon,
+.score__tile .coin {
+  width: 26px;
+  height: 26px;
+}
+
+.score__tile--profit {
+  color: #0d5b4a;
+  background: #dcf5e6;
+  box-shadow: inset 0 0 0 2px #a9dfc0;
+}
+
+.score__tile--down {
+  color: #8a2f1c;
+  background: #ffe6dc;
+  box-shadow: inset 0 0 0 2px #f6bfae;
+}
+
+.score__tile--cash {
+  color: #5a3200;
+  background: #fff1cc;
+  box-shadow: inset 0 0 0 2px #f2d596;
+}
+
+.numbers {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.numbers > summary {
+  justify-content: center;
+  padding: 0.300em 1em;
+  font-weight: 800;
+  color: #0d5b6b;
+  background: #e6f8f8;
+  box-shadow: inset 0 0 0 2px #9fd8de;
+}
+
+.numbers > summary span::after {
+  content: ' ▾';
+}
+
+.numbers[open] > summary {
+  margin-bottom: 14px;
+}
+
+.numbers[open] > summary span::after {
+  content: ' ▴';
+}
+
+.numbers[open] > .bridge {
+  margin-top: 14px;
+}
+
+/* ---- The day report: how the day felt, in pictures ------------------------- */
+
+.report-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 14px 16px;
+  border-radius: 24px;
+  text-align: center;
+  overflow: hidden;
+  background: linear-gradient(180deg, #e2f4fd 0%, #eefaf6 100%);
+}
+
+.report-hero > * {
+  position: relative;
+}
+
+.report-hero--great {
+  background: linear-gradient(180deg, #fff1b8 0%, #ffe3ec 100%);
+}
+
+.report-hero--good {
+  background: linear-gradient(180deg, #e3f8e6 0%, #fff6d6 100%);
+}
+
+/* A tough day is calm and soft, never red. */
+.report-hero--tough {
+  background: linear-gradient(180deg, #e9ecfb 0%, #f3effc 100%);
+}
+
+.cheer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 2px;
+  min-height: 60px;
+}
+
+.cheer--empty {
+  align-items: center;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.cheer__face {
+  width: 50px;
+  height: 58px;
+}
+
+.cheer__face--happy .critter__face--idle {
+  opacity: 0;
+}
+
+.cheer__face--happy .critter__face--happy {
+  opacity: 1;
+}
+
+/* Customers who missed out stand a little smaller and quieter, with their
+   ordinary waiting face: a row of frowns would feel like a telling-off. */
+.cheer__face--sad {
+  width: 42px;
+  height: 49px;
+  opacity: 0.8;
+}
+
+.cheer__face--happy .critter {
+  transform-origin: center bottom;
+  animation: cheer-hop 1.100s ease-in-out 3;
+  animation-delay: calc(0.5s + var(--i) * 0.09s);
+}
+
+/* On an okay day they sway instead of jumping. */
+.report-hero--okay .cheer__face--happy .critter {
+  animation: cheer-sway 2.400s ease-in-out 2;
+}
+
+.report-hero--tough .cheer__face .critter {
+  animation: none;
+}
+
+@keyframes cheer-hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  30% {
+    transform: translateY(-9px) scale(0.96, 1.05);
+  }
+  55% {
+    transform: translateY(0) scale(1.05, 0.94);
+  }
+  75% {
+    transform: translateY(-3px) scale(1, 1);
+  }
+}
+
+@keyframes cheer-sway {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-4deg);
+  }
+  75% {
+    transform: rotate(4deg);
+  }
+}
+
+.fact-row--center {
+  justify-content: center;
+}
+
+.fact-chip--calm {
+  color: #4a4f7a;
+  background: #eceefb;
+  box-shadow: inset 0 0 0 2px #cfd4f2;
+}
+
+.score__tile--calm {
+  color: #4a4f7a;
+  background: #eceefb;
+  box-shadow: inset 0 0 0 2px #cfd4f2;
+}
+
+/* Confetti, coins and sparkles: one short burst, then gone. */
+.celebrate {
+  position: absolute !important;
+  inset: 0;
+  pointer-events: none;
+}
+
+.celebrate__bit {
+  position: absolute;
+  top: -14px;
+  width: 8px;
+  height: 13px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: confetti-fall 1.900s cubic-bezier(0.3, 0.6, 0.6, 1) forwards;
+  animation-delay: var(--delay);
+}
+
+.celebrate__bit--round {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift), 210px) rotate(var(--spin));
+  }
+}
+
+.celebrate__coin {
+  position: absolute;
+  bottom: -20px;
+  width: 20px;
+  height: 20px;
+  opacity: 0;
+  animation: coin-pop 1.300s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+  animation-delay: calc(0.2s + var(--delay));
+}
+
+@keyframes coin-pop {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.6);
+  }
+  45% {
+    opacity: 1;
+    transform: translate(var(--drift), -120px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift), -60px) scale(0.9);
+  }
+}
+
+.celebrate__spark {
+  position: absolute;
+  top: 16px;
+  width: 18px;
+  height: 18px;
+  color: #f2b93b;
+  opacity: 0;
+  animation: spark-glint 1.800s ease-in-out forwards;
+  animation-delay: calc(0.3s + var(--delay) * 2);
+}
+
+.celebrate__spark .spark-icon {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes spark-glint {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1) rotate(40deg);
+  }
+}
+
+.surprise--line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 10px 16px;
+}
+
+.coach__tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.coach__icon {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+
+/* The coach's challenge, as a mission card to pick up. */
+.mission {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 20px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.100rem;
+  color: #5a3200;
+  background: linear-gradient(135deg, #fff3c4 0%, #ffe0b0 100%);
+  box-shadow:
+    inset 0 0 0 2px #f2c46b,
+    0 4px 0 #e9b150;
+}
+
+.mission__icon {
+  flex: none;
+  width: 40px;
+  height: 40px;
+}
+
+.mission__tag {
+  display: block;
+  font-family: var(--font-body, inherit);
+  font-size: 0.760rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a05a12;
+}

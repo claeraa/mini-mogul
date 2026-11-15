@@ -121,6 +121,41 @@ export function coachFacts(model: BusinessModel, r: DayResult): CoachFacts {
   return { outcome: dayOutcome(r), lines, allowed }
 }
 
+/**
+ * One simple thing to try tomorrow, chosen by what actually caused today's
+ * result. A lower price is suggested only when the price really was the
+ * problem; a day spoiled by flyers, a surprise or a short shelf gets advice
+ * about that instead.
+ */
+export function nextStep(model: BusinessModel, r: DayResult): string {
+  const profit = r.operatingProfitCents
+  if (profit > 0) return takeaway(model, r)
+
+  if (r.available === 0) return 'Make a few before you open tomorrow.'
+  if (r.priceCents <= model.unitCostCents) {
+    return `Each one costs ${formatMoney(model.unitCostCents)} to make. Pick a price above that.`
+  }
+  if (r.demand === 0) return 'That price was too high for today. Try a lower one.'
+
+  // From here on the price itself earned money on every sale, so something
+  // else used it up.
+  const extras = r.marketingCents + r.spoilageCents - Math.min(0, r.eventCashCents)
+  const biggest = Math.max(r.marketingCents, r.spoilageCents, -r.eventCashCents)
+  if (extras > 0 && biggest === r.marketingCents) {
+    return r.missedCustomers > 0
+      ? 'Flyers brought more customers than you could serve. Make more on a flyer day.'
+      : 'Flyers cost more than they brought in today. Try a day without them.'
+  }
+  if (extras > 0 && biggest === -r.eventCashCents) {
+    return 'The surprise cost you money today. Your plan was fine, so try it again.'
+  }
+  if (extras > 0 && biggest === r.spoilageCents) {
+    return 'Some items were lost today. That was bad luck, so try your plan again.'
+  }
+  if (r.missedCustomers > 0) return 'You sold everything! Make more so more customers can buy.'
+  return 'Open "See how it adds up" to find the biggest cost, then change one thing.'
+}
+
 /** The built-in coach, used whenever the AI is unavailable or its reply fails a check. */
 export function fallbackCoaching(model: BusinessModel, r: DayResult) {
   const outcome = dayOutcome(r)
@@ -132,21 +167,23 @@ export function fallbackCoaching(model: BusinessModel, r: DayResult) {
         ? 'Every shop owner forgets something once. Today showed that a shop needs something on the shelf before it opens.'
         : 'A quiet day is not a failure. You just found out what price is too high for your customers, and that is useful to know.',
     profit: `Well done! You earned ${formatMoney(profit)} more than you spent on what you sold. That is a real profit.`,
-    loss: `Today cost ${formatMoney(-profit)} more than it earned, and that happens to every business. What matters is what you try next.`,
+    loss: `Today cost ${formatMoney(-profit)} more than it earned. That happens to every shop, and tomorrow is a new day!`,
     'break-even':
       'You covered your costs exactly today. That means you are right on the edge of making a profit.',
   }[outcome]
 
+  // One short goal. On a day without a profit the goal is simply a profit:
+  // "serve everyone" would be the wrong aim if each sale was losing money.
   const challenge =
     outcome === 'no-sales'
-      ? 'Challenge: make your very first sale tomorrow.'
-      : r.missedCustomers > 0
-        ? 'Challenge: serve every customer tomorrow without running out.'
-        : r.endInventory > r.sold
-          ? 'Challenge: sell what is already on your shelf before making lots more.'
-          : profit <= 0
-            ? 'Challenge: finish tomorrow with a profit.'
+      ? 'Challenge: make your first sale tomorrow.'
+      : profit <= 0
+        ? 'Challenge: make a profit tomorrow.'
+        : r.missedCustomers > 0
+          ? 'Challenge: serve every customer tomorrow.'
+          : r.endInventory > r.sold
+            ? 'Challenge: sell what is on your shelf.'
             : `Challenge: beat today's profit of ${formatSigned(profit)}.`
 
-  return { encouragement, suggestion: takeaway(model, r), challenge }
+  return { encouragement, suggestion: nextStep(model, r), challenge }
 }
