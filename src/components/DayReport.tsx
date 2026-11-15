@@ -207,7 +207,11 @@ export function DayReport({
       live = false
     }
   }, [aiOn, model, r, worldId, idea, offering])
-  const coaching = aiCoaching ?? fallbackCoaching(model, r)
+  const verified = fallbackCoaching(model, r)
+  const coaching = aiCoaching ?? verified
+  // The mission always comes from the game's own reading of the day, so it
+  // can never reward the wrong thing; the AI only explains and suggests.
+  const missionLine = verified.challenge
 
   const headingRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
@@ -325,7 +329,7 @@ export function DayReport({
         </p>
       </section>
 
-      {coaching.challenge && (
+      {missionLine && (
         <motion.section
           className="mission"
           aria-label="Mission for tomorrow"
@@ -336,7 +340,7 @@ export function DayReport({
           <TargetIcon />
           <p>
             <span className="mission__tag">Mission</span>
-            {missionText(coaching.challenge)}
+            {missionText(missionLine)}
           </p>
         </motion.section>
       )}
@@ -350,18 +354,18 @@ export function DayReport({
           kind="profit"
           badge={<SparkIcon />}
           title={profit < 0 ? 'Loss today' : 'Profit today'}
-          sub="What you earned from the items you sold"
+          sub="Money from sales, minus what those sales cost you"
           delay={0.2}
         >
           <Lines
-            heading="Revenue"
+            heading="Revenue (money from sales)"
             lines={s.revenue}
             sign={1}
             totalLabel="Total revenue"
             totalCents={s.revenueTotalCents}
           />
           <Lines
-            heading="Expenses"
+            heading="Expenses (what it cost)"
             lines={s.expenses}
             sign={-1}
             totalLabel="Total expenses"
@@ -371,7 +375,9 @@ export function DayReport({
             <span>{profit < 0 ? 'Loss today' : 'Profit today'}</span>
             <strong>{formatSigned(profit)}</strong>
           </p>
-          <p className="book__foot">Revenue take away expenses.</p>
+          <p className="book__foot">
+            Profit is the money from sales minus what it cost to make and sell them.
+          </p>
         </Book>
 
         <Book

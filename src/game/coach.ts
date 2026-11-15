@@ -1,3 +1,4 @@
+import type { DayTruth } from '../ai/schema.ts'
 import { EVENTS } from './model.ts'
 import type { BusinessModel, DayResult } from './model.ts'
 import { formatMoney, formatSigned } from './money.ts'
@@ -24,6 +25,56 @@ export type CoachFacts = {
   lines: string[]
   /** Every number the coach may mention, as written. */
   allowed: Set<string>
+  /** The facts no coaching may contradict. */
+  truth: DayTruth
+}
+
+/** The engine's own reading of the day, in the terms coaching is checked against. */
+export function dayTruth(r: DayResult): DayTruth {
+  return {
+    outcome: dayOutcome(r),
+    ranOut: r.missedCustomers > 0,
+    leftovers: r.endInventory > 0,
+  }
+}
+
+/**
+ * The day in plain statements, worked out from the result. Given to the AI
+ * coach so it explains what happened instead of guessing; every statement
+ * here is also what its reply is checked against.
+ */
+function readingLines(model: BusinessModel, r: DayResult, cashChangeCents: number): string[] {
+  const lines: string[] = []
+  if (r.available === 0) {
+    lines.push('Stock: there was nothing on the shelf to sell.')
+  } else if (r.missedCustomers > 0) {
+    lines.push(
+      `Stock: SOLD OUT TOO EARLY. All ${r.sold} sold, the shelf was empty, and ${r.missedCustomers} more ${
+        r.missedCustomers === 1 ? 'customer' : 'customers'
+      } wanted one but could not buy. The player did NOT have enough to sell. Those were missed sales.`,
+    )
+  } else if (r.endInventory === 0) {
+    lines.push('Stock: just enough. Every customer who came bought one and nothing was left over.')
+  } else {
+    lines.push(
+      `Stock: NOT sold out. Every customer who wanted one got one, and ${r.endInventory} ${
+        r.endInventory === 1 ? 'was' : 'were'
+      } left over for tomorrow.${r.endInventory > r.sold ? ' More was left than was sold: too many were made for this price.' : ''}`,
+    )
+  }
+  if (r.sold === 0 && r.available > 0) {
+    lines.push(r.demand === 0 ? 'Price: nobody wanted to buy at this price.' : 'Sales: nothing was sold.')
+  } else if (r.priceCents <= model.unitCostCents) {
+    lines.push('Price: the price did not cover the cost of making each item, so each sale earned nothing or lost money.')
+  } else {
+    lines.push('Price: each sale earned more than the item cost to make.')
+  }
+  if (r.operatingProfitCents > 0 && cashChangeCents < 0) {
+    lines.push('Cash: there was a profit, but cash went down, because money was spent making items that are still on the shelf.')
+  } else if (r.operatingProfitCents <= 0 && cashChangeCents > 0) {
+    lines.push('Cash: cash went up without a profit, because items made on an earlier day were sold today.')
+  }
+  return lines
 }
 
 const isInt = (value: unknown): value is number =>
@@ -118,7 +169,9 @@ export function coachFacts(model: BusinessModel, r: DayResult): CoachFacts {
   }
   for (let n = 0; n <= model.maxDailyProduction; n += 1) allowed.add(String(n))
 
-  return { outcome: dayOutcome(r), lines, allowed }
+  lines.push(...readingLines(model, r, s.cashChangeCents))
+
+  return { outcome: dayOutcome(r), lines, allowed, truth: dayTruth(r) }
 }
 
 /**
@@ -172,18 +225,37 @@ export function fallbackCoaching(model: BusinessModel, r: DayResult) {
       'You covered your costs exactly today. That means you are right on the edge of making a profit.',
   }[outcome]
 
-  // One short goal. On a day without a profit the goal is simply a profit:
-  // "serve everyone" would be the wrong aim if each sale was losing money.
-  const challenge =
-    outcome === 'no-sales'
-      ? 'Challenge: make your first sale tomorrow.'
-      : profit <= 0
-        ? 'Challenge: make a profit tomorrow.'
-        : r.missedCustomers > 0
-          ? 'Challenge: serve every customer tomorrow.'
-          : r.endInventory > r.sold
-            ? 'Challenge: sell what is on your shelf.'
-            : `Challenge: beat today's profit of ${formatSigned(profit)}.`
+  return { encouragement, suggestion: nextStep(model, r), challenge: mission(model, r) }
+}
 
-  return { encouragement, suggestion: nextStep(model, r), challenge }
+/**
+ * One short goal for tomorrow, chosen from what actually happened. Selling
+ * out is never the goal: when customers missed out, the mission is to have
+ * more ready than today, within what the till can pay for. It never promises
+ * how many customers will come tomorrow.
+ */
+export function mission(model: BusinessModel, r: DayResult): string {
+  if (r.sold === 0) return 'Challenge: make your first sale tomorrow.'
+  // On a day without a profit the goal is simply a profit: "serve everyone"
+  // would be the wrong aim if each sale was losing money.
+  if (r.operatingProfitCents <= 0) return 'Challenge: make a profit tomorrow.'
+  if (r.missedCustomers > 0) {
+    // Today's crowd is a clue, not a promise: tomorrow may bring more or
+    // fewer. So the goal is a step up from what was ready today, not an
+    // exact number of customers to plan for.
+    const affordable = Math.floor(r.cashEndCents / model.unitCostCents) + r.endInventory
+    // Already making all the shop can: more customers than items means the
+    // price has room to rise.
+    if (r.available >= model.maxDailyProduction) return 'Challenge: try a slightly higher price tomorrow.'
+    const canStepUp = affordable > r.available
+    return canStepUp
+      ? `Challenge: have more than ${r.available} ready tomorrow.`
+      : 'Challenge: make as many as you can afford.'
+  }
+  if (r.endInventory > r.sold) return 'Challenge: sell what is on your shelf first.'
+  if (r.endInventory > 0) {
+    return `Challenge: sell the ${r.endInventory} left on your shelf.`
+  }
+  return `Challenge: beat today's profit of ${formatSigned(r.operatingProfitCents)}.`
+
 }

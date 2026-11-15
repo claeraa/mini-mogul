@@ -382,23 +382,68 @@ export function numbersIn(text: string): string[] {
  * `allowed` holds those numbers as written ("$4.50", "11", "25%"), so the
  * coach can repeat the day's real figures but cannot invent new ones.
  */
-const NEGATION = /\b(no|not|never|without|almost|nearly|didn't|did not|wasn't|isn't)\b/i
+const NEGATION =
+  /\b(no|not|never|without|almost|nearly|nobody|none|didn't|did not|wasn't|isn't|weren't|couldn't|could not|don't|do not)\b|\bno one\b/i
+
+/**
+ * The few plain facts about a day that coaching must not contradict. They
+ * come from the financial engine's verified result (see coachFacts), never
+ * from the AI.
+ */
+export type DayTruth = {
+  outcome: 'profit' | 'loss' | 'break-even' | 'no-sales'
+  /** The shelf ran out while customers still wanted to buy. */
+  ranOut: boolean
+  /** Unsold items were left on the shelf at closing. */
+  leftovers: boolean
+}
+
+/** Saying there was enough, when customers went without. */
+const SAYS_ENOUGH =
+  /\bplenty\b|\bmore than enough\b|\bhad enough\b|\benough (to sell|for (every|all))|\bevery(one| customer| single customer) (got|bought|was served|went home|left happy)|\bserved every|\bperfect amount\b|\bjust (the )?right (amount|number)\b|\b(nobody|no one|no customers?|none) (missed|left|went)\b/i
+/** Saying customers went without, when nobody did. */
+const SAYS_SHORT = /\bmissed out\b|\bran out\b|\brunning out\b|\bempty-handed\b|\bturned away\b|\bnot enough to sell\b/i
+/** Saying the shelf was cleared, when items were left. */
+const SAYS_SOLD_OUT =
+  /\bsold out\b|\bsell(ing)? out\b|\bsold (them |it )?(all|everything)\b|\bsold every (one|item|single)\b|\bempty shelf\b|\bshelf (is|was) empty\b/i
+/** Saying items were left, when the shelf was cleared. */
+const SAYS_LEFTOVERS = /\bleft ?overs?\b|\bunsold\b|\b(left|still|stayed) on (the|your) shelf\b/i
+const SAYS_PROFIT = /\b(made|earned|turned|got)\s+(a\s+|an\s+|some\s+)?(\w+\s+)?profit\b/i
+const SAYS_LOSS = /\b(made|had|took)\s+(a\s+)?(\w+\s+)?loss\b|\blost money\b/i
 
 /**
  * True when coaching says the opposite of what the financial engine found:
- * celebrating a profit on a day without one, or reporting a loss on a
- * profitable day. Checked sentence by sentence so "not a profit yet" passes.
+ * a profit on a day without one, "plenty to sell" on a day customers went
+ * without, "sold out" with items left over, and so on. Checked sentence by
+ * sentence, skipping negated ones, so "not a profit yet" passes.
  */
-export function contradictsOutcome(
-  text: string,
-  outcome: 'profit' | 'loss' | 'break-even' | 'no-sales',
-): boolean {
+export function contradictsDay(text: string, truth: DayTruth): boolean {
+  for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+    // "Nobody missed out" is itself the false claim on a day people did.
+    if (truth.ranOut && /\b(nobody|no one|no customers?|none) (missed|left|went)\b/i.test(sentence)) return true
+    if (NEGATION.test(sentence)) continue
+    if (SAYS_PROFIT.test(sentence) && truth.outcome !== 'profit') return true
+    if (SAYS_LOSS.test(sentence) && truth.outcome === 'profit') return true
+    if (truth.ranOut && SAYS_ENOUGH.test(sentence)) return true
+    if (!truth.ranOut && SAYS_SHORT.test(sentence)) return true
+    if (truth.leftovers && SAYS_SOLD_OUT.test(sentence)) return true
+    if (!truth.leftovers && truth.outcome !== 'no-sales' && SAYS_LEFTOVERS.test(sentence)) return true
+  }
+  return false
+}
+
+/** A goal that would teach the wrong lesson for this day. */
+export function unhelpfulMission(challenge: string, truth: DayTruth): boolean {
+  // Selling out is not a goal in itself, least of all when customers missed out.
+  return truth.ranOut && /\bsell(ing)? out\b|\bsold out\b/i.test(challenge) && !NEGATION.test(challenge)
+}
+
+/** Kept for callers that only know the outcome. */
+export function contradictsOutcome(text: string, outcome: DayTruth['outcome']): boolean {
   for (const sentence of text.split(/(?<=[.!?])\s+/)) {
     if (NEGATION.test(sentence)) continue
-    const saysProfit = /\b(made|earned|turned|got)\s+(a\s+|an\s+|some\s+)?(\w+\s+)?profit\b/i.test(sentence)
-    const saysLoss = /\b(made|had|took)\s+(a\s+)?(\w+\s+)?loss\b|\blost money\b/i.test(sentence)
-    if (saysProfit && outcome !== 'profit') return true
-    if (saysLoss && outcome === 'profit') return true
+    if (SAYS_PROFIT.test(sentence) && outcome !== 'profit') return true
+    if (SAYS_LOSS.test(sentence) && outcome === 'profit') return true
   }
   return false
 }
@@ -406,8 +451,8 @@ export function contradictsOutcome(
 export function parseCoaching(
   value: unknown,
   allowed: ReadonlySet<string>,
-  /** How the day really went. With it, coaching that contradicts it is refused. */
-  outcome?: 'profit' | 'loss' | 'break-even' | 'no-sales',
+  /** What the engine found. With it, coaching that contradicts it is refused. */
+  truth?: DayTruth | DayTruth['outcome'],
 ): Coaching | null {
   if (!isRecord(value)) return null
   const encouragement = fitText(value.encouragement, LIMITS.coachLine)
@@ -425,8 +470,11 @@ export function parseCoaching(
       if (!allowed.has(token.replace(/,/g, ''))) return null
     }
   }
-  if (outcome && contradictsOutcome(`${encouragement} ${suggestion} ${challenge ?? ''}`, outcome)) {
-    return null
+  const words = `${encouragement} ${suggestion} ${challenge ?? ''}`
+  if (typeof truth === 'string' && contradictsOutcome(words, truth)) return null
+  if (typeof truth === 'object') {
+    if (contradictsDay(words, truth)) return null
+    if (challenge && unhelpfulMission(challenge, truth)) return null
   }
   return { encouragement, suggestion, challenge }
 }
