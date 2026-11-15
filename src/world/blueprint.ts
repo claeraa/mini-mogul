@@ -157,7 +157,7 @@ const ARCHETYPES: Archetype[] = [
   {
     theme: 'creature-care',
     keywords: [
-      'dragon', 'monster', 'dinosaur', 'dino', 'unicorn', 'creature', 'beast',
+      'dragon', 'monster', 'dinosaur', 'dino', 'creature', 'beast',
       'griffin', 'phoenix', 'yeti', 'troll', 'goblin', 'daycare', 'nursery',
       'hatch*', 'egg',
     ],
@@ -266,8 +266,8 @@ const ARCHETYPES: Archetype[] = [
   {
     theme: 'general-store',
     keywords: [
-      'toy', 'doll', 'teddy', 'teddies', 'puzzle', 'game', 'kite', 'robot',
-      'plush*', 'yoyo',
+      'toy', 'doll', 'teddy', 'teddies', 'puzzle', 'game', 'kite', 'plush*',
+      'yoyo',
     ],
     baseLabel: 'toy shop',
     structure: 'cottage',
@@ -349,7 +349,7 @@ const ICON_WORDS: [ProductIconId, string[]][] = [
   ['paw', ['walk*', 'groom*', 'cuddle', 'treat', 'bone']],
   ['book', ['book', 'story', 'stories', 'comic', 'poem']],
   ['dress', ['dress*', 'cloth*', 'outfit', 'costume', 'hat', 'shoe', 'scarf', 'scarves', 'shirt', 'gown', 'sock', 'tiara', 'cape', 'coat', 'skirt', 'wings']],
-  ['toy', ['toy', 'doll', 'teddy', 'teddies', 'puzzle', 'game', 'kite', 'robot', 'plush*', 'yoyo']],
+  ['toy', ['toy', 'doll', 'teddy', 'teddies', 'puzzle', 'game', 'kite', 'plush*', 'yoyo']],
   ['palette', ['paint*', 'drawing', 'bracelet', 'necklace', 'card', 'sticker', 'candle', 'craft*']],
 ]
 

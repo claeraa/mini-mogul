@@ -1,6 +1,14 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { Settings } from '../lib/storage.ts'
+import { TEXT_SIZES } from '../worlds/settings.ts'
+import type { TextSize } from '../worlds/settings.ts'
+
+const TEXT_SIZE_LABELS: Record<TextSize, string> = {
+  normal: 'Normal text',
+  large: 'Large text',
+  larger: 'Largest text',
+}
 
 type AudioSettingsProps = {
   settings: Settings
@@ -172,6 +180,33 @@ export function AudioSettings({
               onToggle={() => onChange({ sfx: !settings.sfx })}
             />
             <hr />
+            <div className="setting-row" role="group" aria-labelledby={`${panelId}-text`}>
+              <span>
+                <span className="setting-row__label" id={`${panelId}-text`}>
+                  Text size
+                </span>
+              </span>
+              <span className="text-sizes">
+                {TEXT_SIZES.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    className="text-size"
+                    aria-pressed={settings.textSize === size}
+                    aria-label={TEXT_SIZE_LABELS[size]}
+                    onClick={() => onChange({ textSize: size })}
+                  >
+                    A
+                  </button>
+                ))}
+              </span>
+            </div>
+            <Switch
+              label="High contrast"
+              hint="Darker words and stronger outlines."
+              checked={settings.highContrast}
+              onToggle={() => onChange({ highContrast: !settings.highContrast })}
+            />
             <Switch
               label="Reduce motion"
               hint="Calms the floating, drifting and zooming."

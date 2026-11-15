@@ -45,19 +45,21 @@ export const CAST_NAMES: Record<CustomerCastId, string> = {
  */
 const RULES: [CustomerCastId, string[]][] = [
   ['fairies', ['fairy', 'fairies', 'faerie', 'pixie', 'elf', 'elves', 'elven', 'sprite']],
+  // Scaly, horned creatures only. A unicorn, mermaid or robot is not a
+  // dragon: sharing a magical theme is not a reason to show one.
   [
     'dragons',
-    ['dragon', 'dino*', 'monster', 'creature', 'beast', 'griffin', 'phoenix', 'yeti', 'troll', 'goblin', 'unicorn', 'hatchling'],
+    ['dragon', 'dino*', 'monster', 'creature', 'beast', 'griffin', 'phoenix', 'yeti', 'troll', 'goblin', 'hatchling'],
   ],
   [
     'pet-owners',
-    ['pet', 'dog', 'doggy', 'puppy', 'puppies', 'cat', 'kitten', 'kitty', 'hamster', 'pony', 'ponies', 'bunny', 'bunnies', 'rabbit', 'vet', 'kennel', 'groom*', 'animal'],
+    ['pet', 'dog', 'doggy', 'puppy', 'puppies', 'cat', 'kitten', 'kitty', 'hamster', 'pony', 'ponies', 'bunny', 'bunnies', 'rabbit', 'vet', 'kennel', 'animal'],
   ],
   [
     'shoppers',
     ['fashion*', 'boutique', 'cloth*', 'dress*', 'outfit', 'costume', 'hat', 'shoe', 'scarf', 'scarves', 'wardrobe', 'tailor', 'couture', 'gown', 'shirt', 'sock', 'tiara', 'accessor*', 'stylish', 'handbag', 'jewel*'],
   ],
-  ['kids', ['toy', 'doll', 'teddy', 'teddies', 'puzzle', 'game', 'kite', 'robot', 'plush*', 'yoyo', 'balloon', 'slime']],
+  ['kids', ['toy', 'doll', 'teddy', 'teddies', 'puzzle', 'game', 'kite', 'plush*', 'yoyo', 'balloon', 'slime']],
   ['gardeners', ['flower', 'floral', 'florist', 'garden*', 'plant', 'seed', 'bouquet', 'herb']],
   ['readers', ['book', 'library', 'story', 'stories', 'comic', 'read*']],
   ['bakers', ['bak*', 'cake', 'cupcake', 'bread', 'cookie', 'pastry', 'pastries', 'donut', 'pie']],
@@ -73,6 +75,21 @@ const THEME_CAST: Record<WorldThemeId, CustomerCastId> = {
   'craft-studio': 'crafters',
   'book-nook': 'readers',
   'general-store': 'neighbours',
+}
+
+/**
+ * Casts that are one particular kind of character. They are only ever shown
+ * when the player's idea, the first product or the description of the
+ * customers actually mentions that kind; otherwise a neutral cast is used.
+ */
+const SPECIES_CASTS: CustomerCastId[] = ['fairies', 'dragons', 'pet-owners']
+
+/** Ordinary people: right for any business, and never the wrong creature. */
+const NEUTRAL_CAST: CustomerCastId = 'neighbours'
+
+function mentions(cast: CustomerCastId, text: string): boolean {
+  const words = RULES.find(([id]) => id === cast)?.[1] ?? []
+  return hits(tokenize(text), words) > 0
 }
 
 function fromWords(text: string): CustomerCastId | null {
@@ -103,14 +120,36 @@ export type CastInput = {
  * 1. what the player's own idea says (a fairy shop gets fairies);
  * 2. the AI Director's pick, if there is one;
  * 3. what the first product or the audience description says;
- * 4. the usual customers for that kind of world.
+ * 4. the usual customers for that kind of world;
+ * 5. ordinary neighbours.
+ *
+ * Fairies, dragons and pet owners are only chosen at steps 2 and 4 when
+ * something written actually mentions them. Customers the game cannot draw
+ * (unicorns, mermaids, robots) fall through to the kind of business instead:
+ * a unicorn bakery gets bakery customers, not another magical creature.
  */
 export function pickCustomerCast(input: CastInput): CustomerCastId {
+  const everything = `${input.idea} ${input.offering ?? ''} ${input.audience ?? ''}`
+  // A species cast needs its own words somewhere in what was written. This
+  // stops, say, dragons standing in for unicorns because both are magical.
+  const supported = (cast: CustomerCastId | null | undefined): CustomerCastId | null =>
+    cast && (!SPECIES_CASTS.includes(cast) || mentions(cast, everything)) ? cast : null
+
   return (
     fromWords(input.idea) ??
-    (isCustomerCast(input.suggested) ? input.suggested : null) ??
+    supported(isCustomerCast(input.suggested) ? input.suggested : null) ??
     fromWords(`${input.offering ?? ''} ${input.audience ?? ''}`) ??
-    THEME_CAST[input.theme] ??
-    'neighbours'
+    supported(THEME_CAST[input.theme]) ??
+    NEUTRAL_CAST
   )
+}
+
+/**
+ * The name shown for a cast. It only ever names what the characters look
+ * like: the horned, scaly cast is "Dragon families" when the idea is about
+ * dragons and "Creature families" for monsters, dinosaurs and the like.
+ */
+export function castLabel(cast: CustomerCastId, idea: string): string {
+  if (cast === 'dragons' && hits(tokenize(idea), ['dragon']) === 0) return 'Creature families'
+  return CAST_NAMES[cast]
 }

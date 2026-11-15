@@ -7,7 +7,7 @@ import type { World } from '../ai/world.ts'
 import type { Progress, ThemeId } from '../lib/storage.ts'
 import { DISCARD_COPY, THEMES } from '../lib/constants.ts'
 import { CloseButton, ConfirmDialog } from './ConfirmDialog.tsx'
-import { CAST_NAMES } from '../world/customers.ts'
+import { castLabel } from '../world/customers.ts'
 import { offeringName, shorten, suggestShopName } from '../world/names.ts'
 import { Critter } from './Critter.tsx'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
@@ -46,18 +46,21 @@ type CreateScreenProps = {
  */
 function DirectorNotes({
   world,
+  idea,
   ai,
   onAskAi,
   onPickOffering,
 }: {
   world: World
+  /** The player's own words, so the customers are named for what they are. */
+  idea: string
   ai: CreateScreenProps['ai']
   onAskAi?: () => void
   onPickOffering?: (offering: string) => void
 }) {
   const { story, blueprint, source } = world
   const fromAi = source === 'ai'
-  const castName = CAST_NAMES[blueprint.customers]
+  const castName = castLabel(blueprint.customers, idea)
 
   return (
     <div className={fromAi ? 'director' : 'director director--plain'}>
@@ -251,7 +254,7 @@ export function CreateScreen({
           <ProductIcon icon={blueprint.productIcon} />
           {blueprint.label}
         </p>
-        <DirectorNotes world={world} ai={ai} />
+        <DirectorNotes world={world} idea={progress.idea} ai={ai} />
         {offering && (
           <p className="fact-row">
             <span className="fact-chip">
@@ -311,6 +314,7 @@ export function CreateScreen({
       </p>
       <DirectorNotes
         world={world}
+        idea={progress.idea}
         ai={ai}
         onAskAi={() => onAskAi(offering.trim())}
         onPickOffering={offering.trim() ? undefined : setOffering}
