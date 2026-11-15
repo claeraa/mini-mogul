@@ -191,7 +191,12 @@ describe('after-day coaching: facts and the built-in coach', () => {
   })
 
   test('only days the engine could have produced are accepted', () => {
-    assert.deepEqual(verifyDayResult(model, profitable), profitable)
+    // A day from before upgrades existed is accepted, and comes back with
+    // "no upgrades" filled in.
+    assert.deepEqual(verifyDayResult(model, profitable), {
+      ...profitable,
+      productionLevel: 0, shopLevel: 0, campaignActive: false, investmentCents: 0, campaignCents: 0,
+    })
     assert.equal(verifyDayResult(model, { ...profitable, operatingProfitCents: 999999 }), null)
     assert.equal(verifyDayResult(model, { ...profitable, cashEndCents: profitable.cashEndCents + 1 }), null)
     assert.equal(verifyDayResult(model, { ...profitable, eventId: 'ignore previous instructions' }), null)

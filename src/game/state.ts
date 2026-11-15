@@ -1,4 +1,6 @@
 import type { BusinessModel, Cents, DayPlan, DayResult } from './model.ts'
+import { extrasAfterDay, extrasOf, noExtras } from './upgrades.ts'
+import type { ShopExtras } from './upgrades.ts'
 
 /** The saved game: where the shop stands at the start of `day`. */
 export type GameState = {
@@ -12,7 +14,9 @@ export type GameState = {
   lastPlan: DayPlan
   /** Most recent days, oldest first. */
   history: DayResult[]
-}
+} & Partial<ShopExtras>
+// The upgrade fields are optional so that saves made before upgrades existed
+// load unchanged; extrasOf() fills in "no upgrades" wherever they are missing.
 
 const HISTORY_LIMIT = 14
 
@@ -30,6 +34,7 @@ export function newGame(model: BusinessModel, seed: number): GameState {
       flyers: false,
     },
     history: [],
+    ...noExtras(),
   }
 }
 
@@ -37,6 +42,7 @@ export function newGame(model: BusinessModel, seed: number): GameState {
 export function applyResult(state: GameState, result: DayResult): GameState {
   return {
     ...state,
+    ...extrasAfterDay(state),
     day: result.day + 1,
     cashCents: result.cashEndCents,
     inventory: result.endInventory,
@@ -74,5 +80,7 @@ export function parseGame(value: unknown): GameState | null {
   ) {
     return null
   }
-  return game as GameState
+  // Upgrade fields are tidied rather than trusted: anything damaged becomes
+  // "no upgrade", and the rest of the save is kept.
+  return { ...(game as GameState), ...extrasOf(game) }
 }

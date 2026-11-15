@@ -9,7 +9,7 @@ import { ImagineScreen } from './components/ImagineScreen.tsx'
 import { PlayScreen } from './components/PlayScreen.tsx'
 import { WorldsScreen } from './components/WorldsScreen.tsx'
 import { aiAvailable, requestWorldDirection } from './lib/ai.ts'
-import { initAudio, playSfx, setAudioPrefs } from './lib/audio.ts'
+import { initAudio, playSfx, setAudioPrefs, unlockAudio } from './lib/audio.ts'
 import { useMediaQuery, usePointerParallax } from './lib/hooks.ts'
 import {
   loadSettings,
@@ -121,6 +121,11 @@ function App() {
 
   usePointerParallax(rootRef, !reducedMotion)
 
+  const settingsRef = useRef(settings)
+  useEffect(() => {
+    settingsRef.current = settings
+  }, [settings])
+
   useEffect(() => initAudio(), [])
   useEffect(() => {
     setAudioPrefs({
@@ -154,6 +159,12 @@ function App() {
   }, [settings.textSize])
 
   const changeSettings = useCallback((patch: Partial<Settings>) => {
+    // Switching sound on is itself the tap a phone needs before it will play
+    // anything, so audio is started here, inside the tap, and not later when
+    // the setting has been saved and the screen redrawn.
+    if (patch.sound === true || patch.music === true || patch.sfx === true) {
+      unlockAudio(patch.sound ?? settingsRef.current.sound)
+    }
     setSettings((current) => {
       const next = { ...current, ...patch }
       saveSettings(next)

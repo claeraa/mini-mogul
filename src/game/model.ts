@@ -162,6 +162,18 @@ export type DayResult = {
 
   /** Cash paid today to make new items (sold or not). */
   productionSpendCents: Cents
+  /** Cash at the start of the day, before any upgrades bought that morning. */
   cashStartCents: Cents
   cashEndCents: Cents
+
+  // ---- Upgrades (see game/upgrades.ts). Absent on days from older saves. ----
+  /** The shop's upgrade levels on this day. */
+  productionLevel?: number
+  shopLevel?: number
+  /** A poster campaign was bringing extra customers. */
+  campaignActive?: boolean
+  /** Cash spent this morning on lasting upgrades. Not an expense. */
+  investmentCents?: Cents
+  /** Cost of a campaign bought this morning. An expense, inside operating profit. */
+  campaignCents?: Cents
 }

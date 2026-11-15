@@ -11,6 +11,7 @@ A player types any business idea, however fanciful, and Mini Mogul turns it into
 - **A playable business day**: price, production and flyers, with customers, a shelf and a till in the world itself.
 - **An honest day report**: profit, cash change and inventory are shown separately, with an explanation of why profit and cash differ.
 - **A coach**: after each day, a short explanation, one thing to try and an optional challenge, from the AI or from the built-in coach.
+- **Upgrades**: spend the shop's cash on a bigger workshop, a prettier shop or a poster campaign. Each changes the simulation, is saved with its own world, and never guarantees a profit.
 - **My Worlds**: several saved worlds, each with its own progress.
 - **Accessibility**: keyboard play, reduced-motion support, phone layout, sound off by default.
 
@@ -86,6 +87,23 @@ Once the site is public, anyone who finds it can trigger AI calls. The per-minut
 - **Rate limits are in memory.** They reset when the server restarts and are shared by all players, not per player.
 - **English only.**
 
+## Upgrades and how they are counted
+
+The Improve board (the toolbox sign in the world, or the button under the plan) offers three things:
+
+| Upgrade | What it changes | Cost |
+| --- | --- | --- |
+| Workshop (named for the business, e.g. "Bigger oven") | Most items made in a day: 20, then 30, 45, 60 | $15, $30, $50 |
+| Shop front | Customers at any price: +15%, +30%, +45% | $20, $40, $70 |
+| Poster campaign | 20% more customers for 3 days | $6 |
+
+The accounting is deliberately simple and is documented in `src/game/upgrades.ts`:
+
+- A lasting upgrade lowers **cash** when bought. It is **not an expense** and does not lower that day's profit: the shop owns what it bought. Upgrades are not worn down over time (no depreciation).
+- A campaign is used up, so its whole cost is an **expense** on the day it is bought.
+- On any day, cash change = profit - growth in shelf value - upgrades bought. The report shows this.
+- The day itself is still worked out by the unchanged `simulateDay`; upgrades only adjust the numbers that go into it. With no upgrades a shop makes up to 20 a day (previously the only limit was cash, up to 60).
+
 ## My Worlds and saved progress
 
 Players can keep several worlds. Each has its own id, shop, style, AI-imagined world, game days, cash and history; nothing is shared between them. Worlds are stored in the browser's localStorage under `mini-mogul:worlds`, so they belong to one browser on one device and are not synced or backed up online.
@@ -111,6 +129,7 @@ A save from before My Worlds existed (`mini-mogul:progress`, `mini-mogul:game`, 
 - `src/world/names.ts` — tidy shop and product names
 - `src/worlds/store.ts` — My Worlds: the multi-world save, its checks and the migration from the old single save
 - `src/components/WorldsScreen.tsx` — the My Worlds screen
+- `src/game/upgrades.ts`, `src/components/UpgradeBoard.tsx`, `src/world/upgradeNames.ts` — upgrades: the rules and accounting, the Improve board, and the names for each business
 - `src/game/coach.ts` — the day's facts for the coach, and the built-in coach
 - `src/game/report.ts` — splits a day into profit, cash change and inventory for the report
 - `tests/` — tests for demand, revenue, costs, profit, cash, inventory, the report, the blueprints, the AI checks and fallbacks, and My Worlds

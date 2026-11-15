@@ -15,6 +15,7 @@ import type { ProductIconId } from '../world/blueprint.ts'
 import type { CustomerCastId } from '../world/customers.ts'
 import { Critter } from './Critter.tsx'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
+import { ToolboxIcon } from './UpgradeBoard.tsx'
 import { ProductIcon } from './WorldParts.tsx'
 
 type DayReportProps = {
@@ -224,6 +225,7 @@ export function DayReport({
   const cashChange = s.cashChangeCents
   const shelfGrew = s.inventoryChangeCents > 0
   const shelfShrank = s.inventoryChangeCents < 0
+  const invested = s.investmentCents
   const mood = dayMood(model, r)
   const faces = reportFaces(r)
   // Customers arrive one after another; each tile pops in after the headline.
@@ -278,6 +280,12 @@ export function DayReport({
           {r.missedCustomers > 0 && (
             <span className="fact-chip fact-chip--calm">
               <strong>{r.missedCustomers}</strong> missed out
+            </span>
+          )}
+          {invested > 0 && (
+            <span className="fact-chip fact-chip--spend">
+              <ToolboxIcon />
+              Upgraded for {formatMoney(invested)}
             </span>
           )}
         </p>
@@ -482,7 +490,7 @@ export function DayReport({
         transition={{ delay: 0.65, duration: 0.3 }}
       >
         <h2 className="bridge__title">
-          {shelfGrew || shelfShrank
+          {shelfGrew || shelfShrank || invested > 0
             ? 'Why profit and cash are different today'
             : 'Profit and cash match today'}
         </h2>
@@ -502,12 +510,33 @@ export function DayReport({
               </span>
             </>
           )}
+          {invested > 0 && (
+            <>
+              <span className="shelf-flow__op" aria-label="minus">−</span>
+              <span className="bridge__chip bridge__chip--upgrade">
+                <span>Spent on upgrades</span>
+                <strong>{formatMoney(invested)}</strong>
+              </span>
+            </>
+          )}
           <span className="shelf-flow__op" aria-label="equals">=</span>
           <span className="bridge__chip bridge__chip--cash">
             <span>Cash change</span>
             <strong>{formatSigned(cashChange)}</strong>
           </span>
         </div>
+        {invested > 0 && (
+          <ul>
+            <li>
+              <strong>You spent {formatMoney(invested)} on upgrades.</strong>{' '}
+              Cash went down, but you own them now and they help every day.
+            </li>
+            <li>
+              <strong>That is not an expense</strong>, so it did not lower
+              today's profit. An upgrade helps; it cannot promise a profit.
+            </li>
+          </ul>
+        )}
         {shelfGrew && (
           <ul>
             <li>
@@ -540,7 +569,7 @@ export function DayReport({
             </li>
           </ul>
         )}
-        {!shelfGrew && !shelfShrank && (
+        {!shelfGrew && !shelfShrank && invested === 0 && (
           <p>
             Your shelf is worth the same as this morning, so everything you
             paid for today also counted as an expense today.

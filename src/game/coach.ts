@@ -3,7 +3,12 @@ import { EVENTS } from './model.ts'
 import type { BusinessModel, DayResult } from './model.ts'
 import { formatMoney, formatSigned } from './money.ts'
 import { summarizeDay } from './report.ts'
-import { eventById, simulateDay, takeaway } from './simulation.ts'
+import { eventById, takeaway } from './simulation.ts'
+import { newGame } from './state.ts'
+import { CAMPAIGN, MAX_INVESTED_CENTS, MAX_UPGRADE_LEVEL, UPGRADES, simulateShopDay } from './upgrades.ts'
+
+/** The most any shop can make in a day, with every workshop upgrade. */
+const MAX_CAPACITY = UPGRADES.production.values.at(-1)!
 
 /**
  * Everything the after-day coach works from. The numbers all come from the
@@ -69,8 +74,25 @@ function readingLines(model: BusinessModel, r: DayResult, cashChangeCents: numbe
   } else {
     lines.push('Price: each sale earned more than the item cost to make.')
   }
+  const invested = r.investmentCents ?? 0
+  if (invested > 0) {
+    lines.push(
+      `Upgrades: ${formatMoney(invested)} of cash was spent this morning on lasting shop upgrades. That lowered cash, but it is NOT an expense and did not lower profit: the shop still owns what it bought. An upgrade helps on later days too; it does not promise a profit.`,
+    )
+  }
+  if ((r.campaignCents ?? 0) > 0) {
+    lines.push(
+      `Marketing: a poster campaign costing ${formatMoney(r.campaignCents ?? 0)} was bought this morning. All of it is an expense today, and it brings extra customers for ${CAMPAIGN.days} days.`,
+    )
+  } else if (r.campaignActive) {
+    lines.push('Marketing: a poster campaign bought earlier was still bringing extra customers today.')
+  }
   if (r.operatingProfitCents > 0 && cashChangeCents < 0) {
-    lines.push('Cash: there was a profit, but cash went down, because money was spent making items that are still on the shelf.')
+    lines.push(
+      invested > 0
+        ? 'Cash: there was a profit, but cash went down, because cash was spent on lasting upgrades (and on any items still on the shelf).'
+        : 'Cash: there was a profit, but cash went down, because money was spent making items that are still on the shelf.',
+    )
   } else if (r.operatingProfitCents <= 0 && cashChangeCents > 0) {
     lines.push('Cash: cash went up without a profit, because items made on an earlier day were sold today.')
   }
@@ -101,14 +123,47 @@ export function verifyDayResult(model: BusinessModel, value: unknown): DayResult
   const event = EVENTS.find((e) => e.id === r.eventId)
   if (!event) return null
 
-  const replay = simulateDay(
+  // Upgrades travel with the result and are checked like everything else:
+  // only levels and amounts the game could really have produced are accepted.
+  const lvl = (value: unknown) => (value === undefined ? 0 : value)
+  const productionLevel = lvl(r.productionLevel)
+  const shopLevel = lvl(r.shopLevel)
+  const investmentCents = lvl(r.investmentCents)
+  const campaignCents = lvl(r.campaignCents)
+  const campaignActive = r.campaignActive ?? false
+  if (
+    !isInt(productionLevel) || productionLevel < 0 || productionLevel > MAX_UPGRADE_LEVEL ||
+    !isInt(shopLevel) || shopLevel < 0 || shopLevel > MAX_UPGRADE_LEVEL ||
+    !isInt(investmentCents) || investmentCents < 0 || investmentCents > MAX_INVESTED_CENTS ||
+    (campaignCents !== 0 && campaignCents !== CAMPAIGN.costCents) ||
+    typeof campaignActive !== 'boolean' ||
+    (campaignCents > 0 && !campaignActive)
+  ) {
+    return null
+  }
+
+  // Rebuild the morning exactly as it was, then play the day again.
+  const replay = simulateShopDay(
     model,
-    { day: r.day, cashCents: r.cashStartCents, inventory: r.startInventory },
+    {
+      ...newGame(model, 0),
+      day: r.day,
+      cashCents: r.cashStartCents - investmentCents - campaignCents,
+      inventory: r.startInventory,
+      upgrades: { production: productionLevel, shop: shopLevel },
+      campaignDaysLeft: campaignActive ? 1 : 0,
+      investedTodayCents: investmentCents,
+      campaignTodayCents: campaignCents,
+    },
     { priceCents: r.priceCents, produce: r.produced, flyers: r.flyers },
     event,
   )
+  const sent = value as Record<string, unknown>
+  const defaults: Record<string, unknown> = {
+    productionLevel: 0, shopLevel: 0, campaignActive: false, investmentCents: 0, campaignCents: 0,
+  }
   const keys = Object.keys(replay) as (keyof DayResult)[]
-  return keys.every((key) => replay[key] === r[key]) ? replay : null
+  return keys.every((key) => replay[key] === (sent[key] ?? defaults[key])) ? replay : null
 }
 
 export function coachFacts(model: BusinessModel, r: DayResult): CoachFacts {
@@ -145,6 +200,11 @@ export function coachFacts(model: BusinessModel, r: DayResult): CoachFacts {
     `Flyers handed out: ${r.flyers ? `yes, costing ${money(r.marketingCents)}` : 'no'}. Flyers cost ${money(model.flyerCostCents)} and bring about ${count(model.flyerDemandPct)}% more customers.`,
   ]
   allowed.add(`${model.flyerDemandPct}%`)
+  money(r.investmentCents ?? 0)
+  money(r.campaignCents ?? 0)
+  count(CAMPAIGN.days)
+  count(CAMPAIGN.demandPct)
+  allowed.add(`${CAMPAIGN.demandPct}%`)
   if (event) {
     lines.push(`Today's surprise: ${event.title}. ${event.description}`)
     if (event.demandPct !== 0) {
@@ -192,8 +252,12 @@ export function nextStep(model: BusinessModel, r: DayResult): string {
 
   // From here on the price itself earned money on every sale, so something
   // else used it up.
-  const extras = r.marketingCents + r.spoilageCents - Math.min(0, r.eventCashCents)
-  const biggest = Math.max(r.marketingCents, r.spoilageCents, -r.eventCashCents)
+  const campaign = r.campaignCents ?? 0
+  const extras = r.marketingCents + campaign + r.spoilageCents - Math.min(0, r.eventCashCents)
+  const biggest = Math.max(r.marketingCents, campaign, r.spoilageCents, -r.eventCashCents)
+  if (extras > 0 && biggest === campaign && campaign > r.marketingCents) {
+    return `Your poster campaign cost money today. It keeps helping for ${CAMPAIGN.days - 1} more days.`
+  }
   if (extras > 0 && biggest === r.marketingCents) {
     return r.missedCustomers > 0
       ? 'Flyers brought more customers than you could serve. Make more on a flyer day.'
@@ -246,7 +310,11 @@ export function mission(model: BusinessModel, r: DayResult): string {
     const affordable = Math.floor(r.cashEndCents / model.unitCostCents) + r.endInventory
     // Already making all the shop can: more customers than items means the
     // price has room to rise.
-    if (r.available >= model.maxDailyProduction) return 'Challenge: try a slightly higher price tomorrow.'
+    if (r.available >= model.maxDailyProduction) {
+      return model.maxDailyProduction < MAX_CAPACITY
+        ? 'Challenge: make more room, or raise the price.'
+        : 'Challenge: try a slightly higher price tomorrow.'
+    }
     const canStepUp = affordable > r.available
     return canStepUp
       ? `Challenge: have more than ${r.available} ready tomorrow.`

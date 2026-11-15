@@ -21,6 +21,7 @@ import {
 } from '../src/ai/schema.ts'
 import { coachFacts, mission, nextStep, verifyDayResult } from '../src/game/coach.ts'
 import { PRODUCT_SHOP } from '../src/game/model.ts'
+import { modelForResult } from '../src/game/upgrades.ts'
 
 /**
  * The AI Imagination Director's server side: builds the prompts, calls the
@@ -95,6 +96,7 @@ You are given the day's facts, worked out and verified by the game's own financi
 - If the facts say items were left over, do not say the shop sold out or sold everything.
 - A profit does not mean the plan was perfect. Missed customers are missed sales; leftovers are cash waiting on the shelf.
 - Profit and cash are different things. Only mention cash if the facts do.
+- If the facts say cash was spent on lasting shop upgrades, that lowered cash but is not an expense and not a loss: the shop owns what it bought. Never call it wasted money, and never promise that an upgrade will make a profit.
 - Today's number of customers is a clue, not a promise. Tomorrow may bring more or fewer, so never say how many customers will come tomorrow or tell the player to make an exact number to match today's crowd.
 Your reply is checked against these facts, and a reply that contradicts them is thrown away.
 
@@ -218,7 +220,9 @@ export function createAiHandler(provider: Provider | null, options: HandlerOptio
     const result = verifyDayResult(PRODUCT_SHOP, input.result)
     if (!shop || !result) throw new AiError('bad_request')
     admit()
-    const facts = coachFacts(PRODUCT_SHOP, result)
+    // The shop as it stood that day, with any upgrades it had bought.
+    const shopModel = modelForResult(PRODUCT_SHOP, result)
+    const facts = coachFacts(shopModel, result)
     const reply = await provider.complete({
       task: 'coach',
       system: COACH_SYSTEM,
@@ -230,8 +234,8 @@ export function createAiHandler(provider: Provider | null, options: HandlerOptio
         "Today's facts:",
         ...facts.lines.map((line) => `- ${line}`),
         '',
-        `The game's own tip for tomorrow, which fits what caused today's result: ${nextStep(PRODUCT_SHOP, result)}`,
-        `The game's own mission for tomorrow: ${mission(PRODUCT_SHOP, result)}`,
+        `The game's own tip for tomorrow, which fits what caused today's result: ${nextStep(shopModel, result)}`,
+        `The game's own mission for tomorrow: ${mission(shopModel, result)}`,
       ].join('\n'),
       schema: CoachReply,
     })

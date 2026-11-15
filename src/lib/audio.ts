@@ -2,6 +2,14 @@
  * All sound is synthesised in the browser with the Web Audio API, so there
  * are no audio files to license or fetch. Nothing plays until the player has
  * both interacted with the page and switched sound on.
+ *
+ * Phones are strict about this. Mobile Safari and Chrome only let a page
+ * start audio from inside a tap, click or key press: the AudioContext must
+ * be created and resumed during that event, not a moment later. So the
+ * context is only ever created by unlockAudio(), which runs inside real
+ * input events, and music waits until the context reports it is running.
+ * A phone can also suspend or interrupt audio (a call, a locked screen,
+ * another app); the next tap resumes it.
  */
 
 export type SfxName = 'plop' | 'chime' | 'whoosh'
@@ -13,12 +21,56 @@ let unlocked = false
 let ctx: AudioContext | null = null
 let musicGain: GainNode | null = null
 let musicTimer: number | undefined
+/** True once a silent sample has been played inside a gesture (older iOS needs it). */
+let primed = false
 
+type ContextClass = typeof AudioContext
+
+function contextClass(): ContextClass | null {
+  if (typeof window === 'undefined') return null
+  const scope = window as unknown as { AudioContext?: ContextClass; webkitAudioContext?: ContextClass }
+  return scope.AudioContext ?? scope.webkitAudioContext ?? null
+}
+
+/** The context, but only if a gesture has already created it and it is playing. */
 function getContext(): AudioContext | null {
-  if (!unlocked || typeof AudioContext === 'undefined') return null
-  if (!ctx) ctx = new AudioContext()
-  if (ctx.state === 'suspended') void ctx.resume()
-  return ctx
+  return ctx && ctx.state === 'running' ? ctx : null
+}
+
+/**
+ * Makes sound possible. Must be called synchronously from a tap, click or
+ * key handler: that is the only moment a phone allows audio to start.
+ *
+ * `wantSound` says whether the player has sound switched on (or is switching
+ * it on with this very tap). With sound off nothing is created at all.
+ */
+export function unlockAudio(wantSound: boolean = prefs.sound) {
+  unlocked = true
+  if (!wantSound) return
+  const Context = contextClass()
+  if (!Context) return
+  try {
+    if (!ctx) {
+      ctx = new Context()
+      // Music starts, or picks up again, whenever the context starts running.
+      ctx.addEventListener('statechange', syncMusic)
+    }
+    // 'suspended' before the first gesture; iOS also reports 'interrupted'
+    // after a call or a locked screen. Both need a resume inside a gesture.
+    if (ctx.state !== 'running') {
+      void ctx.resume().then(syncMusic, () => {})
+    }
+    if (!primed) {
+      const source = ctx.createBufferSource()
+      source.buffer = ctx.createBuffer(1, 1, 22050)
+      source.connect(ctx.destination)
+      source.start(0)
+      primed = true
+    }
+  } catch {
+    // A browser that refuses audio simply stays quiet; the game still works.
+  }
+  syncMusic()
 }
 
 function tone(
@@ -91,10 +143,12 @@ function musicStep() {
 }
 
 function syncMusic() {
+  const ac = getContext()
+  // Music needs a running context: until a gesture has started one, or
+  // while the phone has paused it, there is nothing to schedule.
   const shouldPlay =
-    unlocked && prefs.sound && prefs.music && !document.hidden
+    unlocked && prefs.sound && prefs.music && !document.hidden && ac !== null
   if (shouldPlay && musicTimer === undefined) {
-    const ac = getContext()
     if (!ac) return
     musicGain = ac.createGain()
     musicGain.gain.value = 0.07
@@ -118,20 +172,22 @@ export function setAudioPrefs(next: AudioPrefs) {
   syncMusic()
 }
 
-/** Waits for the first real interaction before any audio may start. */
+/** The input events a phone accepts as "the player asked for this". */
+const GESTURES = ['pointerup', 'touchend', 'click', 'keydown'] as const
+
+/**
+ * Listens for real interaction. The listeners stay for the whole visit, so
+ * that after the phone pauses audio (a call, the lock screen, switching
+ * apps) the very next tap brings it back. They run in the capture phase,
+ * before the button's own handler, so a sound effect played by that handler
+ * already has a running context.
+ */
 export function initAudio() {
-  const unlock = () => {
-    unlocked = true
-    syncMusic()
-    window.removeEventListener('pointerdown', unlock)
-    window.removeEventListener('keydown', unlock)
-  }
-  window.addEventListener('pointerdown', unlock)
-  window.addEventListener('keydown', unlock)
+  const onGesture = () => unlockAudio()
+  for (const name of GESTURES) window.addEventListener(name, onGesture, true)
   document.addEventListener('visibilitychange', syncMusic)
   return () => {
-    window.removeEventListener('pointerdown', unlock)
-    window.removeEventListener('keydown', unlock)
+    for (const name of GESTURES) window.removeEventListener(name, onGesture, true)
     document.removeEventListener('visibilitychange', syncMusic)
   }
 }

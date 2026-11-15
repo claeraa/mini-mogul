@@ -842,3 +842,350 @@ button.sign:focus-visible,
     right: 5px;
   }
 }
+
+/* ---- Improve: the upgrade sign, button and board --------------------------- */
+
+/* The sign hangs in the sky, top left under the day and cash badges: the
+   one part of every scene with no building, prop or character in it. */
+.hotspot--improve {
+  left: 10px;
+  top: 52px;
+  border-radius: 16px;
+}
+
+.improve-sign {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.350em;
+  min-height: 44px;
+  padding: 0.250em 0.800em 0.250em 0.550em;
+  border-radius: 14px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(0.850rem, 2.400cqw, 1.050rem);
+  color: #4a2a1c;
+  background: linear-gradient(180deg, #f6d9a8, #e7b877);
+  box-shadow:
+    inset 0 0 0 2px #b07a45,
+    0 4px 0 #8a5a48,
+    0 8px 14px rgba(8, 40, 96, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.improve-sign .game-icon {
+  width: 1.500em;
+  height: 1.500em;
+}
+
+.improve-sign__stars {
+  color: #c9781a;
+  letter-spacing: -0.05em;
+}
+
+.hotspot--improve:hover .improve-sign {
+  transform: translateY(-2px) scale(1.04);
+}
+
+.hotspot--improve:active .improve-sign {
+  transform: translateY(2px);
+}
+
+.improve-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.500em;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.300em 1em;
+  border: 0;
+  border-radius: 16px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.050rem;
+  color: #4a2a1c;
+  background: linear-gradient(180deg, #f6d9a8, #e7b877);
+  box-shadow:
+    inset 0 0 0 2px #b07a45,
+    0 4px 0 #8a5a48;
+  transition: transform 0.15s ease;
+}
+
+.improve-button:hover {
+  transform: translateY(-2px);
+}
+
+.improve-button:active {
+  transform: translateY(2px);
+}
+
+.improve-button .game-icon {
+  width: 1.600em;
+  height: 1.600em;
+}
+
+.board {
+  width: min(560px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+}
+
+.board__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.board__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.board__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.upgrade {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 12px;
+  border-radius: 18px;
+  background: #fff8ea;
+  box-shadow: inset 0 0 0 2px #ecd3a8;
+}
+
+.upgrade--bought {
+  background: #e3f8e6;
+  box-shadow: inset 0 0 0 2px #a9dfc0;
+  animation: upgrade-pop 0.500s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes upgrade-pop {
+  from {
+    transform: scale(0.96);
+  }
+}
+
+.upgrade__icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: inset 0 0 0 2px #ecd3a8;
+}
+
+.upgrade__icon :is(.product-icon, .game-icon) {
+  width: 36px;
+  height: 36px;
+}
+
+.upgrade__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.150rem;
+  line-height: 1.2;
+}
+
+.pips {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.pip {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: inset 0 0 0 2px #c99a5a;
+}
+
+.pip--on {
+  background: #ffc23d;
+  box-shadow: inset 0 0 0 2px #c9781a;
+}
+
+.upgrade__effect {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  font-weight: 700;
+}
+
+.upgrade__effect strong {
+  color: #0d5b4a;
+}
+
+.upgrade__arrow {
+  color: var(--ink-soft);
+}
+
+.upgrade__note {
+  font-size: 0.850rem;
+  color: var(--ink-soft);
+}
+
+.upgrade__buy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 96px;
+  text-align: center;
+}
+
+.upgrade__buy .tactile__face {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.350em;
+}
+
+.upgrade__ask {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-weight: 800;
+}
+
+.upgrade__locked {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 6px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.upgrade__short {
+  flex: 1 0 100%;
+  font-family: var(--font-body);
+  font-size: 0.820rem;
+  font-weight: 800;
+  color: #8a2f1c;
+}
+
+.upgrade__done {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: #0d5b4a;
+}
+
+.board__why {
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 0.950rem;
+  background: #eef6ff;
+}
+
+.bridge__chip--upgrade {
+  color: #5a3200;
+  background: #fff1cc;
+}
+
+@media (max-width: 460px) {
+  .upgrade {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .upgrade__buy {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .upgrade__ask {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+}
+
+.app[data-contrast='high'] :is(.upgrade, .improve-sign, .improve-button, .board__why, .upgrade__icon) {
+  color: var(--ink);
+  background: #ffffff;
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.app[data-contrast='high'] :is(.upgrade__note, .upgrade__locked, .upgrade__short) {
+  color: var(--ink-soft);
+}
+
+/* A few sparkles pop out of "Bought!". With reduced motion they never show. */
+.upgrade__done {
+  position: relative;
+}
+
+.upgrade__sparkles span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffc23d;
+  opacity: 0;
+  animation: upgrade-spark 0.800s ease-out forwards;
+  animation-delay: calc(var(--i) * 0.04s);
+}
+
+.upgrade__sparkles span:nth-child(odd) {
+  background: #ff8fb8;
+}
+
+@keyframes upgrade-spark {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(calc(var(--i) * 72deg)) translateY(0) scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(calc(var(--i) * 72deg)) translateY(-34px) scale(1.1);
+  }
+}
+
+/* On a phone-sized scene the sign is just the toolbox (and its stars), so it
+   stays clear of the building and the workshop badge. Its spoken name is
+   unchanged, and the "Improve your shop" button sits under the plan. */
+@container world (max-width: 440px) {
+  .improve-sign__word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .improve-sign {
+    min-width: 44px;
+    justify-content: center;
+    padding: 0.250em 0.500em;
+    font-size: 0.800rem;
+  }
+
+  .improve-sign .game-icon {
+    width: 26px;
+    height: 26px;
+  }
+}

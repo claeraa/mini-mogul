@@ -165,7 +165,7 @@ export function AudioSettings({
             <h2 className="settings-panel__title">Settings</h2>
             <Switch
               label="Sound"
-              hint="Off until you switch it on."
+              hint="Off until you switch it on. On a phone, check it is not on silent."
               checked={settings.sound}
               onToggle={() => onChange({ sound: !settings.sound })}
             />

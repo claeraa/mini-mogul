@@ -39,6 +39,8 @@ export type DaySummary = {
   inventoryChangeCents: Cents
   /** How many more (or fewer) items are on the shelf than this morning. */
   inventoryChangeItems: number
+  /** Cash turned into lasting upgrades this morning. In cash out, not in expenses. */
+  investmentCents: Cents
 }
 
 const sum = (lines: ReportLine[]) =>
@@ -70,6 +72,18 @@ export function summarizeDay(model: BusinessModel, r: DayResult): DaySummary {
       ? [{ id: 'surprise-cost', label: 'Surprise cost', detail: surprise, cents: -r.eventCashCents }]
       : []
 
+  // A campaign is used up, so it is an expense and a cash payment. A lasting
+  // upgrade is only a cash payment: the shop still owns what it bought.
+  const campaign: ReportLine[] =
+    (r.campaignCents ?? 0) > 0
+      ? [{ id: 'campaign', label: 'Poster campaign', detail: 'Bought this morning', cents: r.campaignCents ?? 0 }]
+      : []
+  const investmentCents = r.investmentCents ?? 0
+  const upgrades: ReportLine[] =
+    investmentCents > 0
+      ? [{ id: 'upgrades', label: 'Shop upgrades', detail: 'Yours to keep, so not an expense', cents: investmentCents }]
+      : []
+
   const revenue = [sales, ...bonus]
   const expenses: ReportLine[] = [
     {
@@ -89,6 +103,7 @@ export function summarizeDay(model: BusinessModel, r: DayResult): DaySummary {
         ]
       : []),
     ...flyers,
+    ...campaign,
     ...surpriseCost,
   ]
 
@@ -104,6 +119,8 @@ export function summarizeDay(model: BusinessModel, r: DayResult): DaySummary {
       cents: r.productionSpendCents,
     },
     ...flyers,
+    ...campaign,
+    ...upgrades,
     ...surpriseCost,
   ]
 
@@ -129,5 +146,6 @@ export function summarizeDay(model: BusinessModel, r: DayResult): DaySummary {
     inventoryEndValueCents,
     inventoryChangeCents: inventoryEndValueCents - inventoryStartValueCents,
     inventoryChangeItems: r.endInventory - r.startInventory,
+    investmentCents,
   }
 }

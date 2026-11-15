@@ -7,6 +7,8 @@ type TactileButtonProps = {
   type?: 'button' | 'submit'
   disabled?: boolean
   size?: 'large' | 'medium'
+  /** An accessible name, when the visible text alone would not say enough. */
+  'aria-label'?: string
 }
 
 /** The raised, squishy primary button used for the game's main actions. */
@@ -16,6 +18,7 @@ export function TactileButton({
   type = 'button',
   disabled = false,
   size = 'medium',
+  'aria-label': ariaLabel,
 }: TactileButtonProps) {
   return (
     <motion.button
@@ -23,6 +26,7 @@ export function TactileButton({
       className={`tactile tactile--${size}`}
       onClick={onClick}
       disabled={disabled}
+      aria-label={ariaLabel}
       whileHover={{ scale: 1.03 }}
       whileFocus={{ scale: 1.03 }}
       whileTap={{ scale: 0.98 }}

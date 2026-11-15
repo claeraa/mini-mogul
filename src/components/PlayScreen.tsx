@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { PRODUCT_SHOP } from '../game/model.ts'
+import type { DecorationId, WorldBlueprint } from '../world/blueprint.ts'
+import { buyCampaign, buyUpgrade, extrasOf, makeLimit, modelForGame, modelForResult, simulateShopDay } from '../game/upgrades.ts'
 import type { DayPlan, DayResult } from '../game/model.ts'
 import { formatMoney, formatSigned } from '../game/money.ts'
 import {
@@ -8,7 +10,6 @@ import {
   demandForDay,
   maxProduction,
   pickEvent,
-  simulateDay,
 } from '../game/simulation.ts'
 import { applyResult, newGame } from '../game/state.ts'
 import type { GameState } from '../game/state.ts'
@@ -31,6 +32,8 @@ import {
   SunIcon,
 } from './GameIcons.tsx'
 import { ShopStreet } from './ShopStreet.tsx'
+import { ToolboxIcon, UpgradeBoard } from './UpgradeBoard.tsx'
+import type { Purchase } from './UpgradeBoard.tsx'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
 import { ProductIcon } from './WorldParts.tsx'
 import { WorldScene } from './WorldScene.tsx'
@@ -53,14 +56,28 @@ type PlayScreenProps = {
 
 // Every shop runs on the product model for now; see game/model.ts. The
 // blueprint's `kind` is where a service model would be chosen later.
-const model = PRODUCT_SHOP
+// This is the shop before any upgrades; each world's own upgrades are
+// applied on top of it (game/upgrades.ts).
+const base = PRODUCT_SHOP
 
 /** Time between one on-screen customer's turn and the next. */
 const STAGGER_MS = 420
 
-const freshGame = () => newGame(model, Math.floor(Math.random() * 2 ** 32))
+const freshGame = () => newGame(base, Math.floor(Math.random() * 2 ** 32))
 
 type Phase = 'plan' | 'open' | 'report'
+
+/** Decorations a smarter shop front adds, one per level, skipping any the world already has. */
+const SHOP_FRONT_EXTRAS: DecorationId[] = ['bunting', 'sparkles', 'fireflies', 'hearts', 'bubbles']
+
+function dressedUp(blueprint: WorldBlueprint, shopLevel: number): WorldBlueprint {
+  if (shopLevel <= 0) return blueprint
+  const extra = SHOP_FRONT_EXTRAS.filter((id) => !blueprint.decorations.includes(id)).slice(0, shopLevel)
+  return { ...blueprint, decorations: [...blueprint.decorations, ...extra] }
+}
+
+/** Every lasting upgrade there is to buy: two kinds, three levels each. */
+const UPGRADE_SLOTS = 6
 
 /** The three things a player can change before opening. */
 type Control = 'price' | 'make' | 'flyers'
@@ -105,9 +122,12 @@ export function PlayScreen({
   onExit,
 }: PlayScreenProps) {
   const [game, setGame] = useState<GameState>(() => savedGame ?? freshGame())
+  // The shop as it stands this morning, with this world's upgrades.
+  const model = useMemo(() => modelForGame(base, game), [game])
   const [plan, setPlan] = useState<DayPlan>(() =>
-    clampPlan(model, game, game.lastPlan),
+    clampPlan(modelForGame(base, game), game, game.lastPlan),
   )
+  const [improving, setImproving] = useState(false)
   const [phase, setPhase] = useState<Phase>('plan')
   const [result, setResult] = useState<DayResult | null>(null)
   /** On-screen sales so far while the shop is open. */
@@ -168,7 +188,8 @@ export function PlayScreen({
   const update = (patch: Partial<DayPlan>) =>
     setPlan((current) => clampPlan(model, game, { ...current, ...patch }))
 
-  const makeLimit = maxProduction(model, game.cashCents, plan.flyers)
+  const making = makeLimit(model, game, plan.flyers)
+  const makeMax = making.limit
   const expected = demandForDay(model, plan.priceCents, plan.flyers, null)
   const toSell = game.inventory + plan.produce
   const spending =
@@ -219,7 +240,7 @@ export function PlayScreen({
               : { tone: 'good', text: 'Just right! Enough for everyone.' }
 
   const openForBusiness = () => {
-    const today = simulateDay(model, game, plan, pickEvent(game.seed, game.day))
+    const today = simulateShopDay(base, game, plan, pickEvent(game.seed, game.day))
     const next = applyResult(game, today)
     // Saved straight away, so leaving mid-day never loses it.
     setGame(next)
@@ -236,6 +257,17 @@ export function PlayScreen({
     }
   }
 
+  /** Spends cash on an upgrade. Saved at once, like a day's result. */
+  const buy = (purchase: Purchase) => {
+    const next = purchase === 'campaign' ? buyCampaign(game) : buyUpgrade(game, purchase)
+    if (next === game) return
+    setGame(next)
+    onGameChange(next)
+    // Less cash may mean fewer can be made today; more room may mean more.
+    setPlan((current) => clampPlan(modelForGame(base, next), next, current))
+    playSfx('chime')
+  }
+
   const planNextDay = () => {
     setPlan(clampPlan(model, game, game.lastPlan))
     setResult(null)
@@ -247,7 +279,7 @@ export function PlayScreen({
     const next = freshGame()
     onGameChange(null)
     setGame(next)
-    setPlan(clampPlan(model, next, next.lastPlan))
+    setPlan(clampPlan(modelForGame(base, next), next, next.lastPlan))
     setResult(null)
     setPhase('plan')
     setConfirmRestart(false)
@@ -256,7 +288,7 @@ export function PlayScreen({
   if (phase === 'report' && result) {
     return (
       <DayReport
-        model={model}
+        model={modelForResult(base, result)}
         result={result}
         shopName={shop.shopName}
         icon={blueprint.productIcon}
@@ -271,6 +303,11 @@ export function PlayScreen({
   }
 
   const open = phase === 'open' && result !== null
+  const levels = extrasOf(game).upgrades
+  // A smarter shop front shows: each level hangs out one more decoration
+  // the scene can already draw.
+  const scene = dressedUp(blueprint, levels.shop)
+  const upgradeCount = levels.production + levels.shop
   const cast = open
     ? stageVisitors(result.demand, result.sold, openRoom)
     : stageVisitors(expected, expected, room)
@@ -305,7 +342,7 @@ export function PlayScreen({
       <div className="play-grid">
         <div className="play-stage">
           <WorldScene
-            blueprint={blueprint}
+            blueprint={scene}
             rich
             hud={
               <>
@@ -333,6 +370,23 @@ export function PlayScreen({
             }
             overlay={
               !open && (
+                <>
+                <button
+                  type="button"
+                  className="hotspot hotspot--improve"
+                  aria-label={`Improve your shop. ${upgradeCount} of ${UPGRADE_SLOTS} upgrades bought`}
+                  aria-haspopup="dialog"
+                  onClick={() => {
+                    setImproving(true)
+                    playSfx('plop')
+                  }}
+                >
+                  <span className="improve-sign">
+                    <ToolboxIcon />
+                    <span className="improve-sign__word">Improve</span>
+                    {upgradeCount > 0 && <span className="improve-sign__stars">{'★'.repeat(upgradeCount)}</span>}
+                  </span>
+                </button>
                 <button
                   type="button"
                   className="hotspot hotspot--workshop"
@@ -344,6 +398,7 @@ export function PlayScreen({
                     <ProductIcon icon={blueprint.productIcon} />+{plan.produce}
                   </span>
                 </button>
+                </>
               )
             }
             street={
@@ -475,12 +530,14 @@ export function PlayScreen({
                     valueText={`${plan.produce} items, costing ${formatMoney(plan.produce * model.unitCostCents)}`}
                     value={plan.produce}
                     min={0}
-                    max={makeLimit}
+                    max={makeMax}
                     step={1}
                     hint={
-                      makeLimit === 0
+                      makeMax === 0
                         ? 'Not enough cash to make more today.'
-                        : `${formatMoney(model.unitCostCents)} each. You can make up to ${makeLimit}.`
+                        : making.reason === 'workshop'
+                          ? `${formatMoney(model.unitCostCents)} each. Your workshop makes up to ${making.capacity} a day.${making.canGrow ? ' Improve it to make more!' : ''}`
+                          : `${formatMoney(model.unitCostCents)} each. You have cash for ${makeMax} today.`
                     }
                     onChange={(produce) => update({ produce })}
                   />
@@ -536,6 +593,18 @@ export function PlayScreen({
             )}
 
             <div className="mgmt__actions">
+              <button
+                type="button"
+                className="improve-button"
+                aria-haspopup="dialog"
+                onClick={() => {
+                  setImproving(true)
+                  playSfx('plop')
+                }}
+              >
+                <ToolboxIcon />
+                Improve your shop
+              </button>
               <TactileButton size="large" onClick={openForBusiness} disabled={toSell === 0}>
                 <BellIcon />
                 Open for Business
@@ -556,10 +625,18 @@ export function PlayScreen({
         )}
       </div>
 
+      <UpgradeBoard
+        open={improving}
+        game={game}
+        blueprint={blueprint}
+        onBuy={buy}
+        onClose={() => setImproving(false)}
+      />
+
       <ConfirmDialog
         open={confirmRestart}
         title="Start over from day 1?"
-        message="Your shop stays saved, but its cash, shelf and day count go back to the beginning."
+        message="Your shop stays saved, but its cash, shelf, upgrades and day count go back to the beginning."
         keepLabel="Keep playing"
         confirmLabel="Start over"
         onKeep={() => setConfirmRestart(false)}
