@@ -1,6 +1,8 @@
+import { useLayoutEffect, useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { ProductIconId } from '../world/blueprint.ts'
 import type { CustomerCastId } from '../world/customers.ts'
+import { visitorsThatFit } from '../world/stage.ts'
 import type { CrowdNote, StageVisitor } from '../world/stage.ts'
 import { Critter } from './Critter.tsx'
 import { ProductIcon } from './WorldParts.tsx'
@@ -23,6 +25,8 @@ type ShopStreetProps = {
   emptyText: string
   /** Signs standing in the street, between the customers and the shelf. */
   signs?: ReactNode
+  /** Told how many customers the customer area has room for, as it resizes. */
+  onRoomChange?: (count: number) => void
   /** Makes the shelf a button (it opens the production controls). */
   onShelfClick?: () => void
   shelfExpanded?: boolean
@@ -48,9 +52,24 @@ export function ShopStreet({
   coinLabel,
   emptyText,
   signs,
+  onRoomChange,
   onShelfClick,
   shelfExpanded,
 }: ShopStreetProps) {
+  // The customer area reports its own width, so only as many customers are
+  // drawn as fit beside the signs and shelf at this screen size.
+  const guestsRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const area = guestsRef.current
+    if (!area || !onRoomChange) return
+    const report = () => onRoomChange(visitorsThatFit(area.clientWidth))
+    report()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(report)
+    observer.observe(area)
+    return () => observer.disconnect()
+  }, [onRoomChange])
+
   const shown = Math.min(shelfCount, SHELF_ICONS)
   const shelf = (
     <>
@@ -70,7 +89,7 @@ export function ShopStreet({
       className="street"
       style={{ '--stagger': `${staggerMs}ms`, display: 'contents' } as CSSProperties}
     >
-      <div className="guests" aria-hidden="true">
+      <div className="guests" aria-hidden="true" ref={guestsRef}>
         {visitors.length === 0 && <span className="guests__empty">{emptyText}</span>}
         {visitors.map((visitor, i) => (
           <span

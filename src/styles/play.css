@@ -611,9 +611,45 @@ button.sign:focus-visible,
   min-height: 108px;
 }
 
-@media (max-width: 520px) {
-  .guest.guest--critter {
-    zoom: 0.7;
+/* The world is measured, not the screen: whenever the scene is too narrow
+   for customers, signs and shelf side by side (phones, and the two-column
+   layout on small laptops), customers get a row of their own above them.
+   Customers stay full size; fewer are drawn and "+N more" counts the rest. */
+.card--game .world {
+  container: world / inline-size;
+}
+
+.card--game .guests {
+  /* Room for wings, ears and hats at either end. */
+  padding-inline: 3px;
+}
+
+@container world (max-width: 700px) {
+  .world__street {
+    flex-wrap: wrap;
+    row-gap: 12px;
+    /* Clear of the "+N more" note above the customers' heads. */
+    padding-top: 46px;
+  }
+
+  .guests {
+    flex: 1 0 100%;
+  }
+
+  .street-signs {
+    margin-left: 0;
+  }
+
+  .shelf {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  /* The label sits inside the shelf's own row instead of poking up into
+     the customers above. */
+  .shelf__label {
+    margin-top: 0;
   }
 }
 
@@ -624,21 +660,6 @@ button.sign:focus-visible,
 }
 
 @media (max-width: 520px) {
-  .street-signs {
-    order: 3;
-    margin-left: 0;
-  }
-
-  .card--game .shelf {
-    order: 4;
-    flex: 1;
-    width: auto;
-  }
-
-  .card--game .guests {
-    flex: 1 0 100%;
-  }
-
   .hud-chip {
     font-size: 0.850rem;
     gap: 0.300em;
@@ -659,5 +680,165 @@ button.sign:focus-visible,
 
   .hotspot__badge {
     top: 12%;
+  }
+}
+
+/* ---- Easier to see: text size and high contrast ---------------------------- */
+
+.text-sizes {
+  display: flex;
+  gap: 6px;
+}
+
+.text-size {
+  min-width: 46px;
+  min-height: 46px;
+  padding: 0 0.500em;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+  background: #fff;
+}
+
+.text-size:nth-child(1) {
+  font-size: 0.950rem;
+}
+
+.text-size:nth-child(2) {
+  font-size: 1.200rem;
+}
+
+.text-size:nth-child(3) {
+  font-size: 1.500rem;
+}
+
+.text-size[aria-pressed='true'] {
+  border-color: #1f8f86;
+  color: #fff;
+  background: #1f8f86;
+}
+
+/* A switch is drawn small but is comfortable to tap. */
+.switch {
+  position: relative;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  inset: -6px -4px;
+}
+
+/* High contrast keeps the artwork and darkens everything that is read or
+   pressed: near-black text, solid white surfaces, and an outline on every
+   control and chip. */
+.app[data-contrast='high'] {
+  --ink: #06142e;
+  --ink-soft: #1c2f52;
+  --line: #3d5a85;
+  --deep: #061f52;
+  --paper: #ffffff;
+}
+
+.app[data-contrast='high'] .card,
+.app[data-contrast='high'] .settings-panel {
+  color: var(--ink);
+  background: #ffffff;
+  backdrop-filter: none;
+  box-shadow:
+    0 0 0 3px var(--ink),
+    0 18px 44px rgba(10, 44, 100, 0.35);
+}
+
+.app[data-contrast='high'] :is(.hud-chip, .fact-chip, .chip, .learn-chip, .guests__more, .shelf__label, .world-label, .card__step, .guests__empty) {
+  color: var(--ink);
+  background: #ffffff;
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.app[data-contrast='high'] :is(.director__tag, .mission__tag, .field__help, .card__note, .book__sub, .score__tile > span:not(.coin), .surprise__label, .setting-row__hint) {
+  color: var(--ink-soft);
+}
+
+.app[data-contrast='high'] :is(.director, .coach, .mission, .surprise, .report-hero, .score__tile, .book, .bridge, .mgmt__control, .match, .tool, .card__idea) {
+  color: var(--ink);
+  background: #ffffff;
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.app[data-contrast='high'] :is(.tactile, .sign, .text-button, .dock-button, .card__close, .confirm, .theme-option, .text-size, .world-card) {
+  outline: 2px solid var(--ink);
+  outline-offset: 0;
+}
+
+.app[data-contrast='high'] .text-button {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.app[data-contrast='high'] .field :is(input, textarea) {
+  border-color: var(--ink);
+  background: #ffffff;
+}
+
+.app[data-contrast='high'] .switch {
+  background: #5a6b85;
+  outline: 2px solid var(--ink);
+}
+
+.app[data-contrast='high'] .switch[aria-checked='true'] {
+  background: #0b6b62;
+}
+
+.app[data-contrast='high'] :focus-visible:not(h1) {
+  outline: 4px solid #000 !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 8px #ffe066 !important;
+}
+
+/* On the narrowest scenes the three chips only fit if the customer chip
+   keeps its picture and number and drops the word. Screen readers still
+   hear the whole phrase. */
+@container world (max-width: 300px) {
+  .hud-chip__word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@container world (max-width: 440px) {
+  .app:not([data-text='normal']) .hud-chip__word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .app:not([data-text='normal']) .hud-chip {
+    font-size: 0.780rem;
+  }
+}
+
+@container world (max-width: 300px) {
+  .app:not([data-text='normal']) .hud-chip {
+    font-size: 0.680rem;
+    padding: 0.150em 0.400em;
+    gap: 0.200em;
+  }
+
+  .app:not([data-text='normal']) .world__hud {
+    gap: 3px;
+    left: 5px;
+    right: 5px;
   }
 }

@@ -358,6 +358,12 @@
   margin-block: 1vh;
   container-type: size;
   display: grid;
+  /* The island's box is deliberately larger than this slot on narrow screens
+     (its artwork only fills the middle 71% of the picture). One track pinned
+     to the slot's own size keeps that oversized box centred on the slot, so
+     it spills equally to both sides. Without it the track grew to the box's
+     width and started at the left edge, pushing the island to the right. */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
 }
 

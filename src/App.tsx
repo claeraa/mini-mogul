@@ -29,6 +29,10 @@ import {
   updateWorld,
 } from './worlds/store.ts'
 import type { SavedWorld, WorldStore } from './worlds/store.ts'
+import { TEXT_SCALE } from './worlds/settings.ts'
+
+/** The root font size in index.css. */
+const BASE_FONT_PX = 17
 
 type Screen = 'home' | 'worlds' | 'imagine' | 'create' | 'play'
 
@@ -138,6 +142,16 @@ function App() {
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
+
+  // Text size scales the root font, so every rem-sized label grows together.
+  useEffect(() => {
+    const root = document.documentElement
+    const scale = TEXT_SCALE[settings.textSize]
+    root.style.fontSize = scale === 1 ? '' : `${BASE_FONT_PX * scale}px`
+    return () => {
+      root.style.fontSize = ''
+    }
+  }, [settings.textSize])
 
   const changeSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((current) => {
@@ -293,6 +307,8 @@ function App() {
         ref={rootRef}
         data-screen={screen}
         data-motion={reducedMotion ? 'reduced' : 'full'}
+        data-contrast={settings.highContrast ? 'high' : undefined}
+        data-text={settings.textSize}
         data-launching={launching ? '' : undefined}
       >
         <AmbientLayers />

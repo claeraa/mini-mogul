@@ -74,3 +74,20 @@ export function crowdNote(
     detail: `${total} customers came today. ${shown} are shown.`,
   }
 }
+
+/** The room one customer needs in the street, including a little air. */
+export const VISITOR_SLOT_PX = 50
+
+/**
+ * How many customers can stand in a space `widthPx` wide without touching
+ * the signs, the shelf or each other. Fewer are shown on a narrow screen
+ * rather than shrinking them; the "+N more" note counts the rest.
+ */
+export function visitorsThatFit(
+  widthPx: number,
+  slotPx: number = VISITOR_SLOT_PX,
+  max: number = MAX_STAGE_VISITORS,
+): number {
+  if (!Number.isFinite(widthPx) || widthPx <= 0 || slotPx <= 0) return max
+  return Math.max(1, Math.min(max, Math.floor(widthPx / slotPx)))
+}

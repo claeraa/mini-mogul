@@ -17,7 +17,7 @@ import type { Progress } from '../lib/storage.ts'
 import type { WorldDirection } from '../ai/schema.ts'
 import { buildWorld } from '../ai/world.ts'
 import { offeringName, shorten } from '../world/names.ts'
-import { crowdNote, shelfDuring, stageVisitors } from '../world/stage.ts'
+import { MAX_STAGE_VISITORS, crowdNote, shelfDuring, stageVisitors } from '../world/stage.ts'
 import { Switch } from './AudioSettings.tsx'
 import { CloseButton, ConfirmDialog } from './ConfirmDialog.tsx'
 import { DayReport } from './DayReport.tsx'
@@ -133,10 +133,16 @@ export function PlayScreen({
     if (phase === 'open') skipRef.current?.focus()
   }, [phase])
 
+  // How many customers the street has room for at this screen size. The
+  // number in use is fixed when the shop opens, so a day's little play never
+  // changes cast halfway through.
+  const [room, setRoom] = useState(MAX_STAGE_VISITORS)
+  const [openRoom, setOpenRoom] = useState(MAX_STAGE_VISITORS)
+
   // While the shop is open, customers take turns; then the report appears.
   useEffect(() => {
     if (phase !== 'open' || !result) return
-    const cast = stageVisitors(result.demand, result.sold)
+    const cast = stageVisitors(result.demand, result.sold, openRoom)
     const buyers = cast.filter((visitor) => visitor.buys).length
     const timers: number[] = []
     for (let i = 0; i < buyers; i += 1) {
@@ -154,7 +160,7 @@ export function PlayScreen({
       }, cast.length * STAGGER_MS + 1700),
     )
     return () => timers.forEach((id) => window.clearTimeout(id))
-  }, [phase, result])
+  }, [phase, result, openRoom])
 
   const product = shorten(offeringName(shop.offering), 32) || blueprint.label
   const yesterday = game.history.at(-1)
@@ -219,6 +225,7 @@ export function PlayScreen({
     setGame(next)
     onGameChange(next)
     setResult(today)
+    setOpenRoom(room)
     setServed(0)
     if (reducedMotion) {
       setPhase('report')
@@ -265,8 +272,8 @@ export function PlayScreen({
 
   const open = phase === 'open' && result !== null
   const cast = open
-    ? stageVisitors(result.demand, result.sold)
-    : stageVisitors(expected, expected)
+    ? stageVisitors(result.demand, result.sold, openRoom)
+    : stageVisitors(expected, expected, room)
   const crowd = open ? result.demand : expected
   const buyersShown = cast.filter((visitor) => visitor.buys).length
   const shelfCount = open
@@ -316,7 +323,8 @@ export function PlayScreen({
                     </span>
                     <span className="hud-chip hud-chip--crowd">
                       <PeopleIcon />
-                      About {expected}
+                      <span className="hud-chip__word">About </span>
+                      {expected}
                       <span className="visually-hidden"> customers expected today</span>
                     </span>
                   </>
@@ -346,6 +354,7 @@ export function PlayScreen({
                 crowd={crowdNote(open ? 'arrived' : 'expected', crowd, cast.length)}
                 shelfCount={shelfCount}
                 playing={open}
+                onRoomChange={setRoom}
                 staggerMs={STAGGER_MS}
                 reactions={blueprint.reactions}
                 coinLabel={open ? formatSigned(result.priceCents) : ''}

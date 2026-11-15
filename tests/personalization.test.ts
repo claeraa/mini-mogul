@@ -3,7 +3,7 @@ import { describe, test } from 'node:test'
 import { CUSTOMER_CASTS, PRODUCT_ICONS, PROPS, parseWorldDirection } from '../src/ai/schema.ts'
 import { buildWorld } from '../src/ai/world.ts'
 import { generateWorldBlueprint } from '../src/world/blueprint.ts'
-import { CAST_NAMES, pickCustomerCast } from '../src/world/customers.ts'
+import { CAST_NAMES, castLabel, pickCustomerCast } from '../src/world/customers.ts'
 import { offeringName, shorten, suggestShopName } from '../src/world/names.ts'
 
 const world = (idea: string, offering = '') => generateWorldBlueprint({ idea, offering, style: 'cottage' })
@@ -170,5 +170,89 @@ describe('tidy names', () => {
     assert.equal(shorten('one two three four five six seven', 20), 'one two three four…')
     assert.equal(shorten('short', 20), 'short')
     assert.ok(shorten('a'.repeat(60), 20).length <= 20)
+  })
+})
+
+describe('magical ideas do not borrow the wrong creatures', () => {
+  // The Director's reading of "Magical unicorn bakery", as reported.
+  const unicornBakery = {
+    kidSafe: true,
+    summary: 'A sparkly bakery where unicorns and friends buy magical treats.',
+    label: 'Rainbow Unicorn Bakery',
+    theme: 'bakery', kind: 'product', structure: 'cottage', biome: 'meadow', timeOfDay: 'day',
+    props: ['cakeStand', 'breadBasket'], decorations: ['sparkles'],
+    productIcon: 'cupcake', wallColor: 'blush', accentColor: 'magenta',
+    customers: 'Unicorns and their friends who love magical treats.',
+    reactions: ['So sparkly!', 'Yum!'],
+    offerings: ['Rainbow cupcakes'],
+    concepts: [
+      { id: 'pricing', why: 'Set a fair price.' },
+      { id: 'inventory', why: 'Bake enough for everyone.' },
+    ],
+  }
+  const ai = (idea: string, reply: object) => {
+    const direction = parseWorldDirection(reply)
+    assert.ok(direction)
+    return buildWorld({ idea, offering: '', style: 'cottage' }, direction).blueprint
+  }
+
+  test('unicorn bakery (built-in rules): a bakery with bakery customers, not dragons', () => {
+    const b = world('Magical unicorn bakery')
+    assert.equal(b.theme, 'bakery')
+    assert.equal(b.customers, 'bakers')
+    assert.equal(b.productIcon, 'cupcake')
+    assert.equal(castLabel(b.customers, 'Magical unicorn bakery'), 'Hungry villagers')
+  })
+
+  test('unicorn bakery (AI world): bakery customers whatever cast the Director picked', () => {
+    for (const customerCast of ['dragons', 'bakers', 'fairies', 'pet-owners', 'neighbours', 'wizards']) {
+      const b = ai('Magical unicorn bakery', { ...unicornBakery, customerCast })
+      assert.equal(b.customers, 'bakers', customerCast)
+    }
+    // A world saved before casts existed has no pick at all.
+    const old: Record<string, unknown> = { ...unicornBakery }
+    delete old.customerCast
+    assert.equal(ai('Magical unicorn bakery', old).customers, 'bakers')
+  })
+
+  test('customers the game cannot draw get a neutral cast, never another magical creature', () => {
+    const species = ['fairies', 'dragons', 'pet-owners']
+    for (const idea of ['Unicorn daycare', 'Unicorn grooming salon', 'Mermaid cafe', 'Robot repair shop', 'Magical unicorn rides', 'Wizard school', 'Alien snack bar']) {
+      assert.equal(species.includes(world(idea).customers), false, `${idea}: ${world(idea).customers}`)
+    }
+    assert.equal(world('Unicorn daycare').customers, 'neighbours')
+    // Even if the Director suggests one, with nothing written to support it.
+    assert.equal(pickCustomerCast({ theme: 'creature-care', idea: 'Unicorn daycare', suggested: 'dragons', audience: 'Unicorn parents' }), 'neighbours')
+    assert.equal(pickCustomerCast({ theme: 'general-store', idea: 'Sparkle shop', suggested: 'fairies', audience: 'Magical shoppers' }), 'neighbours')
+  })
+
+  test('a species cast is still used when something written supports it', () => {
+    assert.equal(pickCustomerCast({ theme: 'general-store', idea: 'Sparkle shop', suggested: 'fairies', audience: 'Tiny fairies from the meadow' }), 'fairies')
+    assert.equal(pickCustomerCast({ theme: 'bakery', idea: 'Snack cave', suggested: 'dragons', audience: 'Hungry dragons' }), 'dragons')
+    assert.equal(pickCustomerCast({ theme: 'general-store', idea: 'Treat shop', offering: 'Dog biscuits', suggested: 'pet-owners' }), 'pet-owners')
+    // The player's own idea still comes first.
+    assert.equal(pickCustomerCast({ theme: 'bakery', idea: 'Cosy bakery', suggested: 'dragons', audience: 'Hungry dragons' }), 'bakers')
+  })
+
+  test('the five reference businesses keep the right customers', () => {
+    const expected: [string, string, string][] = [
+      ['Magical unicorn bakery', 'bakers', 'Hungry villagers'],
+      ['Fairy fashion boutique', 'fairies', 'Fairy folk'],
+      ['Dragon daycare', 'dragons', 'Dragon families'],
+      ['Pet sitting', 'pet-owners', 'Pet owners'],
+      ['Bakery', 'bakers', 'Hungry villagers'],
+    ]
+    for (const [idea, cast, label] of expected) {
+      assert.equal(world(idea).customers, cast, idea)
+      assert.equal(castLabel(world(idea).customers, idea), label, idea)
+    }
+  })
+
+  test('characters are only named for what they look like', () => {
+    assert.equal(castLabel('dragons', 'Dragon daycare'), 'Dragon families')
+    assert.equal(castLabel('dragons', 'Monster nursery'), 'Creature families')
+    assert.equal(castLabel('dragons', 'Dinosaur daycare'), 'Creature families')
+    for (const name of Object.values(CAST_NAMES)) assert.doesNotMatch(name, /unicorn|mermaid|robot/i)
+    assert.equal(world('Monster nursery').customers, 'dragons')
   })
 })

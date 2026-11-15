@@ -1,14 +1,10 @@
 import { loadStore, saveStore } from '../worlds/store.ts'
 import type { KeyValue, Shop, WorldStore } from '../worlds/store.ts'
+import { defaultSettings, parseSettings } from '../worlds/settings.ts'
+import type { Settings } from '../worlds/settings.ts'
 
-export type Settings = {
-  /** Master switch. Off by default so nothing ever plays unasked. */
-  sound: boolean
-  music: boolean
-  sfx: boolean
-  /** null follows the device's prefers-reduced-motion setting. */
-  reduceMotion: boolean | null
-}
+export { defaultSettings }
+export type { Settings }
 
 /** The four shop styles. */
 export type ThemeId = Shop['theme']
@@ -17,13 +13,6 @@ export type ThemeId = Shop['theme']
 export type Progress = Shop
 
 const SETTINGS_KEY = 'mini-mogul:settings'
-
-export const defaultSettings: Settings = {
-  sound: false,
-  music: true,
-  sfx: true,
-  reduceMotion: null,
-}
 
 function read<T>(key: string): Partial<T> | null {
   try {
@@ -47,7 +36,7 @@ function write(key: string, value: unknown) {
 }
 
 export function loadSettings(): Settings {
-  return { ...defaultSettings, ...read<Settings>(SETTINGS_KEY) }
+  return parseSettings(read<Settings>(SETTINGS_KEY))
 }
 
 export function saveSettings(settings: Settings) {
