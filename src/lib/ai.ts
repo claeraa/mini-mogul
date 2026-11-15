@@ -95,6 +95,6 @@ export function requestCoaching(
     const data = await call('coach', { ...about, result })
     // The same number check the server ran, against this device's own figures.
     const facts = coachFacts(model, result)
-    return parseCoaching(data?.coaching, facts.allowed, facts.outcome)
+    return parseCoaching(data?.coaching, facts.allowed, facts.truth)
   })
 }
