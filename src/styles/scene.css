@@ -749,3 +749,10 @@
 .app[data-motion='reduced'] .island-parallax {
   transform: none;
 }
+
+.home-actions__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}

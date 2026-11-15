@@ -1,140 +1,286 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { CONCEPTS } from '../ai/schema.ts'
+import type { WorldDirection } from '../ai/schema.ts'
+import { buildWorld } from '../ai/world.ts'
+import type { World } from '../ai/world.ts'
 import type { Progress, ThemeId } from '../lib/storage.ts'
+import { DISCARD_COPY, THEMES } from '../lib/constants.ts'
+import { CloseButton, ConfirmDialog } from './ConfirmDialog.tsx'
+import { CAST_NAMES } from '../world/customers.ts'
+import { offeringName, shorten, suggestShopName } from '../world/names.ts'
+import { Critter } from './Critter.tsx'
 import { SparkIcon, TactileButton } from './StartButton.tsx'
+import { ProductIcon } from './WorldParts.tsx'
+import { WorldScene } from './WorldScene.tsx'
+
+type ShopValues = { shopName: string; theme: ThemeId; offering: string }
 
 type CreateScreenProps = {
   progress: Progress
+  /** The AI Director's checked reading of the idea, when there is one. */
+  direction: WorldDirection | null
+  /** 'off' when this site has no AI Director switched on. */
+  ai: 'off' | 'idle' | 'thinking' | 'failed'
+  onAskAi: (offering: string) => void
+  /** True when the idea being shaped has not been saved yet. */
+  unsavedDraft: boolean
+  /** Opens straight on the edit form (used by Edit in My Worlds). */
+  startEditing?: boolean
+  /** Where leaving goes: "My Worlds" for a saved world, the island for a new one. */
+  exitLabel: string
+  /** Back to the idea screen. */
   onBack: () => void
-  onHome: () => void
-  onSave: (values: {
-    shopName: string
-    theme: ThemeId
-    offering: string
-  }) => void
+  /** Leave for home, dropping whatever is unsaved. */
+  onExit: () => void
+  onPlay: () => void
+  onDirtyChange: (dirty: boolean) => void
+  onSave: (values: ShopValues) => void
 }
 
-const THEMES: { id: ThemeId; label: string; roof: string; trim: string }[] = [
-  { id: 'cottage', label: 'Cozy cottage', roof: '#f0705f', trim: '#ffd978' },
-  { id: 'forest', label: 'Enchanted forest', roof: '#3fa56b', trim: '#d6f58c' },
-  { id: 'seaside', label: 'Seaside', roof: '#2aa9c4', trim: '#ffe9c2' },
-  { id: 'starlight', label: 'Starlight', roof: '#7667d8', trim: '#ffd978' },
-]
+/**
+ * The world at a glance: who visits (drawn, then named) and, when the AI
+ * Director imagined it, a one-line story, product ideas to tap and what the
+ * business teaches. Pictures and chips first; the longer words are tucked
+ * into "More" for anyone who wants them.
+ */
+function DirectorNotes({
+  world,
+  ai,
+  onAskAi,
+  onPickOffering,
+}: {
+  world: World
+  ai: CreateScreenProps['ai']
+  onAskAi?: () => void
+  onPickOffering?: (offering: string) => void
+}) {
+  const { story, blueprint, source } = world
+  const fromAi = source === 'ai'
+  const castName = CAST_NAMES[blueprint.customers]
 
-function suggestShopName(playerName: string, idea: string) {
-  const words = idea
-    .replace(/^(a|an|the)\s+/i, '')
-    .split(/\s+/)
-    .slice(0, 4)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-  return (playerName ? `${playerName}'s ${words}` : words).slice(0, 40)
-}
-
-function ShopPreview({ theme, name }: { theme: ThemeId; name: string }) {
-  const { roof, trim } = THEMES.find((t) => t.id === theme) ?? THEMES[0]
   return (
-    <figure className="shop-preview">
-      <svg viewBox="0 0 240 150" aria-hidden="true">
-        <ellipse cx="120" cy="134" rx="96" ry="12" fill="#6cc763" />
-        <rect x="62" y="62" width="116" height="74" rx="8" fill="#fff3dc" />
-        <path d="M150 62h20a8 8 0 0 1 8 8v58a8 8 0 0 1-8 8h-20z" fill="#efd6b6" />
-        <path
-          d="M52 66l68-52 68 52z"
-          fill={roof}
-          stroke={roof}
-          strokeWidth="10"
-          strokeLinejoin="round"
-        />
-        <circle cx="120" cy="46" r="12" fill="#fff3dc" />
-        <path
-          d="M120 38c1 5 3 7 8 8-5 1-7 3-8 8-1-5-3-7-8-8 5-1 7-3 8-8z"
-          fill={trim}
-          stroke="#e8a92a"
-          strokeWidth="0.800"
-        />
-        <rect x="74" y="92" width="44" height="28" rx="4" fill={trim} />
-        <path d="M96 92v28M74 106h44" stroke="#fff" strokeWidth="2" opacity="0.7" />
-        <path d="M70 78h52v10a6.500 6.500 0 0 1-13 0 6.500 6.500 0 0 1-13 0 6.500 6.500 0 0 1-13 0 6.500 6.500 0 0 1-13 0z" fill="#fff" />
-        <path d="M83 78h13v10a6.500 6.500 0 0 1-13 0zM109 78h13v10a6.500 6.500 0 0 1-13 0z" fill={roof} />
-        <path d="M134 136v-34a13 13 0 0 1 26 0v34z" fill={roof} />
-        <circle cx="153" cy="116" r="2.500" fill="#fff3dc" />
-      </svg>
-      <figcaption className="shop-preview__sign">
-        {name.trim() || 'Your shop name'}
-      </figcaption>
-    </figure>
+    <div className={fromAi ? 'director' : 'director director--plain'}>
+      {fromAi && (
+        <p className="director__by">
+          <SparkIcon />
+          AI Director
+        </p>
+      )}
+      {fromAi && <p className="director__story">{shorten(story.summary, 120)}</p>}
+
+      <p className="director__cast">
+        <span className="director__faces" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <Critter key={i} cast={blueprint.customers} index={i} />
+          ))}
+        </span>
+        <span>
+          <span className="director__tag">Customers</span>
+          <strong>{castName}</strong>
+        </span>
+      </p>
+
+      {fromAi && onPickOffering && story.offerings.length > 0 && (
+        <div className="director__line">
+          <span className="director__tag">Tap one to {blueprint.kind === 'service' ? 'offer' : 'sell'}</span>
+          <ul className="director__chips">
+            {story.offerings.map((idea) => (
+              <li key={idea}>
+                <button type="button" className="chip" onClick={() => onPickOffering(idea)}>
+                  <ProductIcon icon={blueprint.productIcon} />
+                  {idea}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {fromAi && (
+        <details className="director__more">
+          <summary>
+            <span className="director__tag">You will learn</span>
+            {story.concepts.map((concept) => (
+              <span key={concept.id} className="learn-chip">
+                {CONCEPTS[concept.id]}
+              </span>
+            ))}
+            <span className="director__toggle">More</span>
+          </summary>
+          <ul className="director__concepts">
+            <li>
+              <strong>Customers.</strong> {story.customers}
+            </li>
+            {story.concepts.map((concept) => (
+              <li key={concept.id}>
+                <strong>{CONCEPTS[concept.id]}.</strong> {concept.why}
+              </li>
+            ))}
+            {blueprint.kind === 'service' && (
+              <li>
+                <strong>Services.</strong> For now each one you get ready
+                counts as one item on your shelf.
+              </li>
+            )}
+          </ul>
+        </details>
+      )}
+
+      {ai === 'thinking' && (
+        <p className="director__status" role="status">
+          <SparkIcon />
+          The AI Director is dreaming…
+        </p>
+      )}
+      {!fromAi && ai !== 'thinking' && ai !== 'off' && onAskAi && (
+        <div className="director__ask" role="status">
+          {ai === 'failed' && <span className="field__help">The AI is resting. Your world still works!</span>}
+          <button type="button" className="chip" onClick={onAskAi}>
+            <SparkIcon /> Ask the AI Director
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
 export function CreateScreen({
   progress,
+  direction,
+  ai,
+  onAskAi,
+  unsavedDraft,
+  startEditing = false,
+  exitLabel,
   onBack,
-  onHome,
+  onExit,
+  onPlay,
+  onDirtyChange,
   onSave,
 }: CreateScreenProps) {
-  const [shopName, setShopName] = useState(
-    progress.shopName || suggestShopName(progress.playerName, progress.idea),
-  )
-  const [theme, setTheme] = useState<ThemeId>(progress.theme)
-  const [offering, setOffering] = useState(progress.offering)
+  // What the form looked like when it was last opened or saved.
+  const [baseline, setBaseline] = useState<ShopValues>(() => ({
+    shopName:
+      progress.shopName || suggestShopName(progress.playerName, progress.idea),
+    theme: progress.theme,
+    offering: progress.offering,
+  }))
+  const [shopName, setShopName] = useState(baseline.shopName)
+  const [theme, setTheme] = useState<ThemeId>(baseline.theme)
+  const [offering, setOffering] = useState(baseline.offering)
   const [error, setError] = useState('')
-  const [editing, setEditing] = useState(progress.step !== 'ready')
+  const [editing, setEditing] = useState(startEditing || progress.step !== 'ready')
+  const [leaving, setLeaving] = useState<'home' | 'back' | null>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
+
+  // The world is rebuilt from the words on screen, so it updates as you type.
+  const world = useMemo(
+    () => buildWorld({ idea: progress.idea, offering, style: theme }, direction),
+    [progress.idea, offering, theme, direction],
+  )
+  const blueprint = world.blueprint
+  // The dragon nursery shows its full lived-in scene before play begins.
+  const richPreview = blueprint.theme === 'creature-care'
+  // Changing a shop that is already saved, rather than making a new one.
+  const editingSaved = progress.step === 'ready' && !unsavedDraft
+
+  const fieldsChanged =
+    editing &&
+    (shopName !== baseline.shopName ||
+      theme !== baseline.theme ||
+      offering !== baseline.offering)
+  // Leaving for home also abandons a planted-but-unsaved idea.
+  const dirty = fieldsChanged || (editing && unsavedDraft)
 
   useEffect(() => {
     headingRef.current?.focus()
   }, [editing])
 
+  useEffect(() => {
+    onDirtyChange(dirty)
+    return () => onDirtyChange(false)
+  }, [dirty, onDirtyChange])
+
+  const finishLeaving = (target: 'home' | 'back') => {
+    setLeaving(null)
+    if (target === 'home') onExit()
+    else onBack()
+  }
+
+  const requestLeave = (target: 'home' | 'back') => {
+    // Going back keeps a planted idea; going home abandons it too.
+    const needsConfirm = target === 'home' ? dirty : fieldsChanged
+    if (needsConfirm) setLeaving(target)
+    else finishLeaving(target)
+  }
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     if (!shopName.trim()) {
-      setError('Give your shop a name so customers can find it.')
+      setError('Your shop needs a name!')
       nameRef.current?.focus()
       return
     }
-    onSave({ shopName: shopName.trim(), theme, offering: offering.trim() })
+    const saved = {
+      shopName: shopName.trim(),
+      theme,
+      offering: offering.trim(),
+    }
+    onSave(saved)
+    setBaseline(saved)
+    setShopName(saved.shopName)
+    setOffering(saved.offering)
     setEditing(false)
   }
 
   if (!editing) {
     return (
       <section className="card card--ready">
+        <CloseButton label="Close and return home" onClick={onExit} />
         <p className="card__step">
           <SparkIcon />
-          Shop saved
+          Ready to open!
         </p>
         <h1 className="card__title" ref={headingRef} tabIndex={-1}>
-          {shopName} is ready to open
+          {shopName}
         </h1>
-        <ShopPreview theme={theme} name={shopName} />
-        <dl className="summary">
-          <div>
-            <dt>The idea</dt>
-            <dd>{progress.idea}</dd>
-          </div>
-          {offering && (
-            <div>
-              <dt>First on the shelf</dt>
-              <dd>{offering}</dd>
-            </div>
-          )}
-        </dl>
-        <p className="card__note">
-          Opening day, where you set prices and meet your first customers, is
-          the next part of Mini Mogul to be built. Your shop is saved on this
-          device until then.
+        <WorldScene blueprint={blueprint} sign={shopName} rich={richPreview} />
+        <p className="world-label">
+          <ProductIcon icon={blueprint.productIcon} />
+          {blueprint.label}
         </p>
-        <div className="card__actions">
-          <button
-            type="button"
-            className="text-button"
-            onClick={() => setEditing(true)}
-          >
-            Edit shop
-          </button>
-          <TactileButton onClick={onHome}>Back to the island</TactileButton>
+        <DirectorNotes world={world} ai={ai} />
+        {offering && (
+          <p className="fact-row">
+            <span className="fact-chip">
+              <ProductIcon icon={blueprint.productIcon} />
+              <span className="visually-hidden">
+                {blueprint.kind === 'service' ? 'First service: ' : 'First product: '}
+              </span>
+              {shorten(offeringName(offering), 40)}
+            </span>
+          </p>
+        )}
+        <p className="card__note">Saved on this device.</p>
+        <div className="card__actions card__actions--stack">
+          <TactileButton size="large" onClick={onPlay}>
+            <SparkIcon />
+            Open Your Shop
+          </TactileButton>
+          <div className="card__links">
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setEditing(true)}
+            >
+              Edit
+            </button>
+            <button type="button" className="text-button" onClick={onExit}>
+              {exitLabel}
+            </button>
+          </div>
         </div>
       </section>
     )
@@ -142,19 +288,33 @@ export function CreateScreen({
 
   return (
     <form className="card" onSubmit={handleSubmit} noValidate>
+      <CloseButton
+        label="Close and return home"
+        onClick={() => requestLeave('home')}
+      />
       <p className="card__step">
         <SparkIcon />
-        Create
+        {editingSaved ? 'Edit' : 'Create'}
       </p>
       <h1 className="card__title" ref={headingRef} tabIndex={-1}>
-        Shape your shop
+        {editingSaved ? 'Edit your world' : 'Shape your world'}
       </h1>
       <p className="card__idea">
         <span>Your idea</span>
         {progress.idea}
       </p>
 
-      <ShopPreview theme={theme} name={shopName} />
+      <WorldScene blueprint={blueprint} sign={shopName} rich={richPreview} />
+      <p className="world-label" role="status">
+        <ProductIcon icon={blueprint.productIcon} />
+        {blueprint.label}
+      </p>
+      <DirectorNotes
+        world={world}
+        ai={ai}
+        onAskAi={() => onAskAi(offering.trim())}
+        onPickOffering={offering.trim() ? undefined : setOffering}
+      />
 
       <div className="field">
         <label htmlFor="shop-name">Shop name</label>
@@ -183,7 +343,7 @@ export function CreateScreen({
       </div>
 
       <fieldset className="field themes">
-        <legend>Shop style</legend>
+        <legend>Style</legend>
         <div className="themes__grid">
           {THEMES.map((option) => (
             <label key={option.id} className="theme-option">
@@ -196,7 +356,7 @@ export function CreateScreen({
               />
               <span
                 className="theme-option__swatch"
-                style={{ background: option.roof }}
+                style={{ background: option.swatch }}
               />
               <span>{option.label}</span>
             </label>
@@ -206,7 +366,8 @@ export function CreateScreen({
 
       <div className="field">
         <label htmlFor="first-offering">
-          What is the first thing you will sell or do?
+          <ProductIcon icon={blueprint.productIcon} />
+          {blueprint.kind === 'service' ? 'First thing to offer' : 'First thing to sell'}
         </label>
         <input
           id="first-offering"
@@ -219,11 +380,24 @@ export function CreateScreen({
       </div>
 
       <div className="card__actions">
-        <button type="button" className="text-button" onClick={onBack}>
+        <button
+          type="button"
+          className="text-button"
+          onClick={() => requestLeave('back')}
+        >
           Back
         </button>
-        <TactileButton type="submit">Save my shop</TactileButton>
+        <TactileButton type="submit">
+          {editingSaved ? 'Save changes' : 'Create my world'}
+        </TactileButton>
       </div>
+
+      <ConfirmDialog
+        open={leaving !== null}
+        {...DISCARD_COPY}
+        onKeep={() => setLeaving(null)}
+        onConfirm={() => leaving && finishLeaving(leaving)}
+      />
     </form>
   )
 }

@@ -1,3 +1,6 @@
+import { loadStore, saveStore } from '../worlds/store.ts'
+import type { KeyValue, Shop, WorldStore } from '../worlds/store.ts'
+
 export type Settings = {
   /** Master switch. Off by default so nothing ever plays unasked. */
   sound: boolean
@@ -7,19 +10,13 @@ export type Settings = {
   reduceMotion: boolean | null
 }
 
-export type ThemeId = 'cottage' | 'forest' | 'seaside' | 'starlight'
+/** The four shop styles. */
+export type ThemeId = Shop['theme']
 
-export type Progress = {
-  step: 'create' | 'ready'
-  playerName: string
-  idea: string
-  shopName: string
-  theme: ThemeId
-  offering: string
-}
+/** One world's shop details. (Kept under its original name.) */
+export type Progress = Shop
 
 const SETTINGS_KEY = 'mini-mogul:settings'
-const PROGRESS_KEY = 'mini-mogul:progress'
 
 export const defaultSettings: Settings = {
   sound: false,
@@ -57,21 +54,33 @@ export function saveSettings(settings: Settings) {
   write(SETTINGS_KEY, settings)
 }
 
-export function loadProgress(): Progress | null {
-  const saved = read<Progress>(PROGRESS_KEY)
-  if (!saved || typeof saved.idea !== 'string' || !saved.idea.trim()) {
-    return null
-  }
-  return {
-    step: saved.step === 'ready' ? 'ready' : 'create',
-    playerName: saved.playerName ?? '',
-    idea: saved.idea,
-    shopName: saved.shopName ?? '',
-    theme: saved.theme ?? 'cottage',
-    offering: saved.offering ?? '',
+// ---- My Worlds ----------------------------------------------------------------
+
+/** A new id that has never been used on this device. */
+export function makeWorldId(): string {
+  try {
+    return crypto.randomUUID()
+  } catch {
+    return `w-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
   }
 }
 
-export function saveProgress(progress: Progress) {
-  write(PROGRESS_KEY, progress)
+/** localStorage, or a stand-in that remembers nothing when it is unavailable. */
+function deviceStorage(): KeyValue {
+  try {
+    const storage = window.localStorage
+    storage.getItem('mini-mogul:settings')
+    return storage
+  } catch {
+    return { getItem: () => null, setItem: () => {} }
+  }
+}
+
+/** Loads every saved world, bringing an older single save across the first time. */
+export function loadWorlds(): WorldStore {
+  return loadStore(deviceStorage(), makeWorldId, Date.now())
+}
+
+export function saveWorlds(store: WorldStore) {
+  saveStore(deviceStorage(), store)
 }

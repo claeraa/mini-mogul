@@ -1,0 +1,78 @@
+import type { BusinessModel, Cents, DayPlan, DayResult } from './model.ts'
+
+/** The saved game: where the shop stands at the start of `day`. */
+export type GameState = {
+  version: 1
+  modelId: string
+  seed: number
+  day: number
+  cashCents: Cents
+  inventory: number
+  /** The player's last choices, used as tomorrow's starting plan. */
+  lastPlan: DayPlan
+  /** Most recent days, oldest first. */
+  history: DayResult[]
+}
+
+const HISTORY_LIMIT = 14
+
+export function newGame(model: BusinessModel, seed: number): GameState {
+  return {
+    version: 1,
+    modelId: model.id,
+    seed: seed >>> 0,
+    day: 1,
+    cashCents: model.startingCashCents,
+    inventory: 0,
+    lastPlan: {
+      priceCents: model.referencePriceCents,
+      produce: model.defaultProduce,
+      flyers: false,
+    },
+    history: [],
+  }
+}
+
+/** Moves the game on to the next morning. */
+export function applyResult(state: GameState, result: DayResult): GameState {
+  return {
+    ...state,
+    day: result.day + 1,
+    cashCents: result.cashEndCents,
+    inventory: result.endInventory,
+    lastPlan: {
+      priceCents: result.priceCents,
+      produce: result.produced,
+      flyers: false,
+    },
+    history: [...state.history, result].slice(-HISTORY_LIMIT),
+  }
+}
+
+const isInt = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value)
+
+/** Accepts only a well-formed save; anything else starts a fresh game. */
+export function parseGame(value: unknown): GameState | null {
+  if (typeof value !== 'object' || value === null) return null
+  const game = value as Partial<GameState>
+  const plan = game.lastPlan
+  if (
+    game.version !== 1 ||
+    typeof game.modelId !== 'string' ||
+    !isInt(game.seed) ||
+    !isInt(game.day) ||
+    game.day < 1 ||
+    !isInt(game.cashCents) ||
+    !isInt(game.inventory) ||
+    game.inventory < 0 ||
+    typeof plan !== 'object' ||
+    plan === null ||
+    !isInt(plan.priceCents) ||
+    !isInt(plan.produce) ||
+    !Array.isArray(game.history)
+  ) {
+    return null
+  }
+  return game as GameState
+}

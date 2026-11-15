@@ -1,0 +1,20 @@
+# Render blueprint: one web service that serves the built game and /api/ai/*.
+# Nothing is deployed until you connect this repository in the Render dashboard.
+services:
+  - type: web
+    name: mini-mogul
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: AI_DIRECTOR
+        value: "on"
+      - key: AI_MODEL
+        value: claude-haiku-5-5
+      # Typed into the Render dashboard; never stored in this repository.
+      - key: ANTHROPIC_API_KEY
+        sync: false
