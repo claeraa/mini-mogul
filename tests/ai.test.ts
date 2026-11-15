@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import { AiError, createAiHandler } from '../server/director.ts'
 import type { Provider } from '../server/director.ts'
+import { createAiEndpoint } from '../server/http.ts'
 import { createAnthropicProvider } from '../server/provider.ts'
 import { numbersIn, parseCoaching, parseWorldDirection } from '../src/ai/schema.ts'
 import type { WorldDirection } from '../src/ai/schema.ts'
@@ -291,5 +292,23 @@ describe('AI endpoint', () => {
     const tampered = await createAiHandler(honest)('POST', 'coach', { idea: 'Magical bakery', offering: '', result: { ...result, cashEndCents: 9999999 } })
     assert.equal(tampered.status, 400)
     assert.equal(honest.calls.length, 0)
+  })
+})
+
+describe('switching the AI on for a server', () => {
+  test('a key alone never switches it on', () => {
+    for (const AI_DIRECTOR of [undefined, '', 'off', 'true', 'ON']) {
+      const endpoint = createAiEndpoint({ AI_DIRECTOR, ANTHROPIC_API_KEY: 'test-key-not-real' })
+      assert.match(endpoint.summary, /off/)
+    }
+    assert.match(createAiEndpoint({ AI_DIRECTOR: 'on' }).summary, /off/)
+  })
+
+  test('on with a key uses Claude Haiku 5.5 by default and never logs the key', () => {
+    const endpoint = createAiEndpoint({ AI_DIRECTOR: 'on', ANTHROPIC_API_KEY: 'test-key-not-real' })
+    assert.match(endpoint.summary, /on \(anthropic, claude-haiku-5-5\)/)
+    assert.equal(endpoint.summary.includes('test-key-not-real'), false)
+    const other = createAiEndpoint({ AI_DIRECTOR: 'on', ANTHROPIC_API_KEY: 'k', AI_MODEL: 'claude-sonnet-5-5' })
+    assert.match(other.summary, /claude-sonnet-5-5/)
   })
 })

@@ -12,11 +12,13 @@ import type { Provider } from './director.ts'
 
 export type AiEnv = {
   ANTHROPIC_API_KEY?: string
-  /** Optional override, e.g. a smaller, cheaper model. */
+  /** Optional override, e.g. claude-sonnet-5-5 for richer writing. */
   AI_MODEL?: string
 }
 
-const DEFAULT_MODEL = 'claude-opus-5-5'
+// Claude Haiku 5.5: the fast, low-cost model. These are short, structured
+// replies and a child is waiting, so speed matters more than depth.
+const DEFAULT_MODEL = 'claude-haiku-5-5'
 
 /** How long one attempt may take, and how many times the SDK may retry. */
 const TIMEOUT_MS = 20_000

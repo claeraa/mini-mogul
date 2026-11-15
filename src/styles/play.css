@@ -640,6 +640,24 @@ button.sign:focus-visible,
   }
 
   .hud-chip {
-    font-size: 0.900rem;
+    font-size: 0.850rem;
+    gap: 0.300em;
+    padding: 0.150em 0.550em;
+  }
+
+  /* Keep the chips on one row, and the workshop badge clear of them. */
+  .world__hud {
+    flex-wrap: nowrap;
+    gap: 5px;
+    left: 8px;
+    right: 8px;
+  }
+
+  .hud-chip {
+    white-space: nowrap;
+  }
+
+  .hotspot__badge {
+    top: 12%;
   }
 }

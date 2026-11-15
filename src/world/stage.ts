@@ -38,3 +38,39 @@ export function shelfDuring(
   if (buyers <= 0) return available
   return available - Math.round((sold * Math.min(served, buyers)) / buyers)
 }
+
+export type CrowdNote = {
+  /** Shown where there is room, e.g. "+12 more potential customers". */
+  text: string
+  /** Shown on narrow screens. */
+  short: string
+  /** The whole picture in one sentence, for a tooltip. */
+  detail: string
+}
+
+/**
+ * Words for the customers who do not fit on screen. Before the shop opens
+ * the crowd is only an estimate ('expected'); once it is open they are the
+ * customers who really came ('arrived'). Null when everyone is on screen,
+ * so the scene never hints at customers who are not in the numbers.
+ */
+export function crowdNote(
+  kind: 'expected' | 'arrived',
+  total: number,
+  shown: number,
+): CrowdNote | null {
+  const extra = total - shown
+  if (!Number.isInteger(extra) || extra <= 0 || shown < 0) return null
+  if (kind === 'expected') {
+    return {
+      text: `+${extra} more potential ${extra === 1 ? 'customer' : 'customers'}`,
+      short: `+${extra} more may visit`,
+      detail: `About ${total} customers may visit today. This is an estimate; ${shown} are shown.`,
+    }
+  }
+  return {
+    text: `+${extra} more ${extra === 1 ? 'customer' : 'customers'}`,
+    short: `+${extra} more came`,
+    detail: `${total} customers came today. ${shown} are shown.`,
+  }
+}

@@ -294,7 +294,16 @@ function Decoration({ id, c }: { id: DecorationId; c: WorldColors }) {
           {[[92, 78, 1], [230, 66, 0.800], [252, 128, 0.700], [70, 132, 0.800], [150, 44, 0.600], [208, 104, 0.550]].map(
             ([x, y, s], i) => (
               <g key={i} transform={`translate(${x} ${y}) scale(${s})`}>
-                <path className="w-twinkle" style={delay(i, 0.45)} d={SPARK} fill={i % 2 ? c.trim : '#fff'} />
+                <path
+                  className="w-twinkle"
+                  style={delay(i, 0.45)}
+                  d={SPARK}
+                  fill={i % 2 ? c.trim : '#fff'}
+                  stroke={shade(c.trim, 0.3)}
+                  strokeOpacity="0.55"
+                  strokeWidth="0.9"
+                  strokeLinejoin="round"
+                />
               </g>
             ),
           )}
@@ -304,22 +313,31 @@ function Decoration({ id, c }: { id: DecorationId; c: WorldColors }) {
       return (
         <g>
           {[[40, 136], [84, 110], [118, 150], [214, 128], [250, 150], [288, 118]].map(([x, y], i) => (
-            <circle key={i} className="w-firefly" style={delay(i, 0.7)} cx={x} cy={y} r="2.200" fill="#fff3a0" />
+            <circle key={i} className="w-firefly" style={delay(i, 0.7)} cx={x} cy={y} r="2.200" fill="#fff3a0" stroke="#d99a1c" strokeOpacity="0.6" strokeWidth="0.8" />
           ))}
         </g>
       )
     case 'butterflies':
       return (
         <g>
-          {[[72, 116, '#ff8fb8'], [248, 102, '#ffd978']].map(([x, y, fill], i) => (
-            <g key={i} transform={`translate(${x} ${y})`}>
-              <g className="w-wander" style={delay(i, 1.300)}>
-                <ellipse className="w-flap" cx="-3.500" cy="0" rx="4" ry="5.500" fill={fill as string} />
-                <ellipse className="w-flap w-flap--right" cx="3.500" cy="0" rx="4" ry="5.500" fill={fill as string} />
-                <rect x="-0.800" y="-4" width="1.600" height="8" rx="0.800" fill="#5f3d42" />
+          {/* Each wing has an outline and a spot in a deeper shade of its own
+              colour, so it reads against pale, peach and green backgrounds. */}
+          {[[72, 116, '#ff8fb8'], [248, 102, '#ffd978']].map(([x, y, fill], i) => {
+            const edge = shade(fill as string, 0.38)
+            return (
+              <g key={i} transform={`translate(${x} ${y})`}>
+                <g className="w-wander" style={delay(i, 1.300)}>
+                  {[-1, 1].map((side) => (
+                    <g key={side} className={side < 0 ? 'w-flap' : 'w-flap w-flap--right'}>
+                      <ellipse cx={side * 3.5} cy="0" rx="4" ry="5.500" fill={fill as string} stroke={edge} strokeWidth="1" />
+                      <circle cx={side * 4} cy="-1.500" r="1.200" fill={edge} opacity="0.75" />
+                    </g>
+                  ))}
+                  <rect x="-0.800" y="-4" width="1.600" height="8" rx="0.800" fill="#5f3d42" />
+                </g>
               </g>
-            </g>
-          ))}
+            )
+          })}
         </g>
       )
     case 'bunting': {
@@ -340,7 +358,7 @@ function Decoration({ id, c }: { id: DecorationId; c: WorldColors }) {
         <g>
           {[[136, 84], [186, 76], [162, 60]].map(([x, y], i) => (
             <g key={i} transform={`translate(${x} ${y})`}>
-              <path className="w-rise" style={delay(i, 1.400)} d={HEART} fill="#ff8fa8" />
+              <path className="w-rise" style={delay(i, 1.400)} d={HEART} fill="#ff8fa8" stroke="#d6557c" strokeWidth="0.8" strokeLinejoin="round" />
             </g>
           ))}
         </g>
@@ -352,7 +370,8 @@ function Decoration({ id, c }: { id: DecorationId; c: WorldColors }) {
             <circle
               key={i}
               className="w-rise"
-              style={delay(i, 0.9)}
+              // A faint cool rim outside the white one keeps bubbles visible on pale skies.
+              style={{ ...delay(i, 0.9), filter: 'drop-shadow(0 0 0.6px rgba(40, 96, 160, 0.75))' }}
               cx={x}
               cy={y}
               r={r}
@@ -369,17 +388,20 @@ function Decoration({ id, c }: { id: DecorationId; c: WorldColors }) {
         <g>
           {[[40, 60], [98, 30], [150, 70], [214, 44], [272, 90], [300, 50]].map(([x, y], i) => (
             <g key={i} transform={`translate(${x} ${y})`}>
-              <ellipse className="w-fall" style={delay(i, 1.100)} rx="3.500" ry="2" fill={i % 2 ? '#ffc2d6' : '#fff'} />
+              <ellipse className="w-fall" style={delay(i, 1.100)} rx="3.500" ry="2" fill={i % 2 ? '#ffc2d6' : '#fff'} stroke="#e58aa8" strokeWidth="0.7" />
             </g>
           ))}
         </g>
       )
     case 'seagulls':
       return (
-        <g fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <g fill="none" strokeLinecap="round" strokeLinejoin="round">
           {[[84, 52, 1], [124, 70, 0.700]].map(([x, y, s], i) => (
             <g key={i} transform={`translate(${x} ${y}) scale(${s})`}>
-              <path className="w-glide" style={delay(i, 2)} d="M-8 0q4-6 8 0q4-6 8 0" />
+              <g className="w-glide" style={delay(i, 2)}>
+                <path d="M-8 0q4-6 8 0q4-6 8 0" stroke="#6f8fb5" strokeWidth="3.6" />
+                <path d="M-8 0q4-6 8 0q4-6 8 0" stroke="#fff" strokeWidth="2" />
+              </g>
             </g>
           ))}
         </g>

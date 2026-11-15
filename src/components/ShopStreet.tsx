@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { ProductIconId, WorldThemeId } from '../world/blueprint.ts'
-import type { StageVisitor } from '../world/stage.ts'
+import type { CrowdNote, StageVisitor } from '../world/stage.ts'
 import { Critter } from './Critter.tsx'
 import { ProductIcon } from './WorldParts.tsx'
 
@@ -9,8 +9,8 @@ type ShopStreetProps = {
   /** Picks the cast of customers: bakers, pets, baby dragons and so on. */
   theme: WorldThemeId
   visitors: StageVisitor[]
-  /** Customers who do not fit on screen. */
-  extra: number
+  /** Words for the customers who do not fit on screen, if there are any. */
+  crowd: CrowdNote | null
   shelfCount: number
   /** True while the shop is open and guests take turns at the counter. */
   playing: boolean
@@ -39,7 +39,7 @@ export function ShopStreet({
   icon,
   theme,
   visitors,
-  extra,
+  crowd,
   shelfCount,
   playing,
   staggerMs,
@@ -98,7 +98,15 @@ export function ShopStreet({
             )}
           </span>
         ))}
-        {extra > 0 && <span className="guests__more">+{extra} more</span>}
+        {crowd && (
+          <span
+            className={playing ? 'guests__more' : 'guests__more guests__more--estimate'}
+            title={crowd.detail}
+          >
+            <span className="guests__more-full">{crowd.text}</span>
+            <span className="guests__more-short">{crowd.short}</span>
+          </span>
+        )}
       </div>
 
       {signs}

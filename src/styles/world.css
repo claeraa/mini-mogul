@@ -528,6 +528,26 @@
   white-space: nowrap;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.85);
+  border: 2px solid transparent;
+}
+
+/* Before opening, the crowd is only an estimate: a dashed outline says so. */
+.guests__more--estimate {
+  border: 2px dashed color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+.guests__more-short {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .guests__more-full {
+    display: none;
+  }
+
+  .guests__more-short {
+    display: inline;
+  }
 }
 
 .guests__empty {
@@ -1230,4 +1250,14 @@
    it rather than over the bottom edge. */
 .world[data-rich] > .world__view + .world__sign {
   margin-top: -5px;
+}
+
+/* Read by screen readers, not drawn. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

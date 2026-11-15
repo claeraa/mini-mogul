@@ -16,7 +16,7 @@ import { playSfx } from '../lib/audio.ts'
 import type { Progress } from '../lib/storage.ts'
 import type { WorldDirection } from '../ai/schema.ts'
 import { buildWorld } from '../ai/world.ts'
-import { MAX_STAGE_VISITORS, shelfDuring, stageVisitors } from '../world/stage.ts'
+import { crowdNote, shelfDuring, stageVisitors } from '../world/stage.ts'
 import { Switch } from './AudioSettings.tsx'
 import { CloseButton, ConfirmDialog } from './ConfirmDialog.tsx'
 import { DayReport } from './DayReport.tsx'
@@ -314,6 +314,7 @@ export function PlayScreen({
                     <span className="hud-chip hud-chip--crowd">
                       <PeopleIcon />
                       About {expected}
+                      <span className="visually-hidden"> customers expected today</span>
                     </span>
                   </>
                 )}
@@ -339,7 +340,7 @@ export function PlayScreen({
                 icon={blueprint.productIcon}
                 theme={blueprint.theme}
                 visitors={cast}
-                extra={Math.max(0, crowd - MAX_STAGE_VISITORS)}
+                crowd={crowdNote(open ? 'arrived' : 'expected', crowd, cast.length)}
                 shelfCount={shelfCount}
                 playing={open}
                 staggerMs={STAGGER_MS}

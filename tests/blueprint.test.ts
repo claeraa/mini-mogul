@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import { generateWorldBlueprint, tokenize } from '../src/world/blueprint.ts'
 import type { StyleId } from '../src/world/blueprint.ts'
-import { shelfDuring, stageVisitors } from '../src/world/stage.ts'
+import { crowdNote, shelfDuring, stageVisitors } from '../src/world/stage.ts'
+import { PRODUCT_SHOP } from '../src/game/model.ts'
+import { demandForDay } from '../src/game/simulation.ts'
 
 const world = (idea: string, offering = '', style: StyleId = 'cottage') =>
   generateWorldBlueprint({ idea, offering, style })
@@ -134,5 +136,46 @@ describe('on-screen customers', () => {
     assert.equal(shelfDuring(14, 11, 0, 6), 14)
     assert.equal(shelfDuring(14, 11, 6, 6), 3)
     assert.equal(shelfDuring(5, 0, 0, 0), 5)
+  })
+})
+
+describe('words for customers who do not fit on screen', () => {
+  test('an estimate and real arrivals are worded differently', () => {
+    const expected = crowdNote('expected', 28, 8)!
+    const arrived = crowdNote('arrived', 28, 8)!
+    assert.equal(expected.text, '+20 more potential customers')
+    assert.equal(arrived.text, '+20 more customers')
+    assert.notEqual(expected.short, arrived.short)
+    assert.match(expected.detail, /estimate/)
+    assert.match(arrived.detail, /^28 customers came today/)
+    assert.equal(crowdNote('arrived', 9, 8)!.text, '+1 more customer')
+  })
+
+  test('nothing is said when everyone is on screen or nobody is coming', () => {
+    for (const kind of ['expected', 'arrived'] as const) {
+      assert.equal(crowdNote(kind, 0, 0), null)
+      assert.equal(crowdNote(kind, 5, 5), null)
+      assert.equal(crowdNote(kind, 8, 8), null)
+      assert.equal(crowdNote(kind, 3, 8), null)
+      assert.equal(crowdNote(kind, Number.NaN, 0), null)
+    }
+  })
+
+  test('the count always matches the simulation at every price', () => {
+    const m = PRODUCT_SHOP
+    let checked = 0
+    for (let price = m.minPriceCents; price <= m.ceilingPriceCents; price += m.priceStepCents) {
+      for (const flyers of [false, true]) {
+        const demand = demandForDay(m, price, flyers, null)
+        const shown = stageVisitors(demand, demand).length
+        const note = crowdNote('expected', demand, shown)
+        if (demand <= shown) assert.equal(note, null)
+        else assert.equal(note!.text.startsWith(`+${demand - shown} more potential`), true)
+        checked += 1
+      }
+    }
+    assert.ok(checked > 20)
+    // At the price where nobody buys, nothing hints at a waiting crowd.
+    assert.equal(demandForDay(m, m.ceilingPriceCents, false, null), 0)
   })
 })

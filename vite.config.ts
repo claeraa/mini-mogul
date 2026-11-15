@@ -7,15 +7,15 @@ export default defineConfig(({ mode }) => {
   // Server-side only. These names have no VITE_ prefix on purpose, so Vite
   // never copies them into the code that is sent to the browser.
   const env = loadEnv(mode, process.cwd(), '')
-  // The AI must be switched on deliberately, so a key that happens to be set
-  // in someone's shell can never run up charges by surprise.
-  const enabled = env.AI_DIRECTOR === 'on'
   return {
     plugins: [
       react(),
+      // The endpoint stays off unless AI_DIRECTOR is exactly "on".
       aiDirectorPlugin({
-        ANTHROPIC_API_KEY: enabled ? env.ANTHROPIC_API_KEY : undefined,
+        AI_DIRECTOR: env.AI_DIRECTOR,
+        ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY,
         AI_MODEL: env.AI_MODEL,
+        AI_DAILY_LIMIT: env.AI_DAILY_LIMIT,
       }),
     ],
   }
